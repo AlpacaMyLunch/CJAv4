@@ -12,21 +12,27 @@ interface SelectProps {
 interface SelectTriggerProps {
   className?: string
   children: React.ReactNode
+  isOpen?: boolean
+  setIsOpen?: (open: boolean) => void
 }
 
 interface SelectValueProps {
   placeholder?: string
+  selectedValue?: string
 }
 
 interface SelectContentProps {
   children: React.ReactNode
   className?: string
+  isOpen?: boolean
+  handleValueChange?: (value: string) => void
 }
 
 interface SelectItemProps {
   value: string
   children: React.ReactNode
   className?: string
+  handleValueChange?: (value: string) => void
 }
 
 const Select = ({ value, onValueChange, children, defaultValue }: SelectProps) => {
@@ -41,27 +47,26 @@ const Select = ({ value, onValueChange, children, defaultValue }: SelectProps) =
 
   return (
     <div className="relative">
-      {React.Children.map(children, child =>
-        React.isValidElement(child)
-          ? React.cloneElement(child as any, {
-              isOpen,
-              setIsOpen,
-              selectedValue,
-              handleValueChange,
-            })
-          : child
-      )}
+      {React.Children.map(children, child => {
+        if (!React.isValidElement(child)) return child
+        
+        return React.cloneElement(child, {
+          ...(child.props || {}),
+          isOpen,
+          setIsOpen,
+          selectedValue,
+          handleValueChange,
+        } as any)
+      })}
     </div>
   )
 }
 
-const SelectTrigger = ({ className, children, ...props }: SelectTriggerProps & any) => {
-  const { isOpen, setIsOpen } = props
-  
+const SelectTrigger = ({ className, children, isOpen, setIsOpen }: SelectTriggerProps) => {
   return (
     <button
       type="button"
-      onClick={() => setIsOpen(!isOpen)}
+      onClick={() => setIsOpen?.(!isOpen)}
       className={cn(
         "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className
@@ -73,14 +78,11 @@ const SelectTrigger = ({ className, children, ...props }: SelectTriggerProps & a
   )
 }
 
-const SelectValue = ({ placeholder, ...props }: SelectValueProps & any) => {
-  const { selectedValue } = props
+const SelectValue = ({ placeholder, selectedValue }: SelectValueProps) => {
   return <span>{selectedValue || placeholder}</span>
 }
 
-const SelectContent = ({ children, className, ...props }: SelectContentProps & any) => {
-  const { isOpen, handleValueChange } = props
-  
+const SelectContent = ({ children, className, isOpen, handleValueChange }: SelectContentProps) => {
   if (!isOpen) return null
   
   return (
@@ -88,21 +90,22 @@ const SelectContent = ({ children, className, ...props }: SelectContentProps & a
       "absolute top-full z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
       className
     )}>
-      {React.Children.map(children, child =>
-        React.isValidElement(child)
-          ? React.cloneElement(child as any, { handleValueChange })
-          : child
-      )}
+      {React.Children.map(children, child => {
+        if (!React.isValidElement(child)) return child
+        
+        return React.cloneElement(child, {
+          ...(child.props || {}),
+          handleValueChange
+        } as any)
+      })}
     </div>
   )
 }
 
-const SelectItem = ({ value, children, className, ...props }: SelectItemProps & any) => {
-  const { handleValueChange } = props
-  
+const SelectItem = ({ value, children, className, handleValueChange }: SelectItemProps) => {
   return (
     <div
-      onClick={() => handleValueChange(value)}
+      onClick={() => handleValueChange?.(value)}
       className={cn(
         "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
         className
