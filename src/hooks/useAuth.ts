@@ -42,6 +42,7 @@ export function useAuth() {
     error: null,
     isAdmin: false
   })
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
   useEffect(() => {
     // Get initial session
@@ -52,6 +53,7 @@ export function useAuth() {
         if (error) {
           console.error('Initial session error:', error)
           setAuthState(prev => ({ ...prev, error, loading: false }))
+          setInitialLoadComplete(true)
           return
         }
         
@@ -70,6 +72,7 @@ export function useAuth() {
               error: null,
               isAdmin
             })
+            setInitialLoadComplete(true)
           } catch (error) {
             console.error('Admin check failed:', error)
             setAuthState({
@@ -79,6 +82,7 @@ export function useAuth() {
               error: null,
               isAdmin: false
             })
+            setInitialLoadComplete(true)
           }
         } else {
           // No user, set state without admin check
@@ -89,6 +93,7 @@ export function useAuth() {
             error: null,
             isAdmin: false
           })
+          setInitialLoadComplete(true)
         }
       } catch (error) {
         console.error('Initial session catch:', error)
@@ -97,6 +102,7 @@ export function useAuth() {
           error: error as AuthError, 
           loading: false 
         }))
+        setInitialLoadComplete(true)
       }
     }
 
@@ -105,6 +111,8 @@ export function useAuth() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Skip auth state changes until initial load is complete
+        if (!initialLoadComplete) return
         const user = session?.user ?? null
         
         // Track authentication events
@@ -127,6 +135,7 @@ export function useAuth() {
               error: null,
               isAdmin
             })
+            setInitialLoadComplete(true)
           } catch (error) {
             console.error('Admin check failed:', error)
             setAuthState({
@@ -136,6 +145,7 @@ export function useAuth() {
               error: null,
               isAdmin: false
             })
+            setInitialLoadComplete(true)
           }
         } else {
           // No user, set state without admin check
@@ -151,7 +161,7 @@ export function useAuth() {
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [initialLoadComplete])
 
   const signInWithDiscord = async (redirectTo?: string) => {
     const currentOrigin = window.location.origin
