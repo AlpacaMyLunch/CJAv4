@@ -23,13 +23,11 @@ const checkIsAdmin = async (user: User | null): Promise<boolean> => {
       .maybeSingle()
     
     if (error) {
-      console.error('Admin check error:', error)
       return false
     }
     
     return !!data
   } catch (error) {
-    console.error('Admin check exception:', error)
     return false
   }
 }
@@ -51,7 +49,6 @@ export function useAuth() {
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('Initial session error:', error)
           setAuthState(prev => ({ ...prev, error, loading: false }))
           setInitialLoadComplete(true)
           return
@@ -61,10 +58,8 @@ export function useAuth() {
         
         // Check admin status if user exists, then set complete state
         if (user) {
-          console.log('🔑 Current user ID for admin setup:', user.id)
           try {
             const isAdmin = await checkIsAdmin(user)
-            console.log('🔐 Admin check result:', isAdmin)
             setAuthState({
               user,
               session,
@@ -74,7 +69,6 @@ export function useAuth() {
             })
             setInitialLoadComplete(true)
           } catch (error) {
-            console.error('Admin check failed:', error)
             setAuthState({
               user,
               session,
@@ -96,7 +90,6 @@ export function useAuth() {
           setInitialLoadComplete(true)
         }
       } catch (error) {
-        console.error('Initial session catch:', error)
         setAuthState(prev => ({ 
           ...prev, 
           error: error as AuthError, 
@@ -124,10 +117,8 @@ export function useAuth() {
         
         // Check admin status if user exists, then set complete state
         if (user) {
-          console.log('🔑 Current user ID for admin setup:', user.id)
           try {
             const isAdmin = await checkIsAdmin(user)
-            console.log('🔐 Admin check result:', isAdmin)
             setAuthState({
               user,
               session,
@@ -137,7 +128,6 @@ export function useAuth() {
             })
             setInitialLoadComplete(true)
           } catch (error) {
-            console.error('Admin check failed:', error)
             setAuthState({
               user,
               session,
@@ -161,7 +151,7 @@ export function useAuth() {
     )
 
     return () => subscription.unsubscribe()
-  }, [initialLoadComplete])
+  }, [])
 
   const signInWithDiscord = async (redirectTo?: string) => {
     const currentOrigin = window.location.origin
@@ -175,7 +165,6 @@ export function useAuth() {
     })
     
     if (error) {
-      console.error('Discord OAuth error:', error)
       setAuthState(prev => ({ ...prev, error }))
     }
   }
