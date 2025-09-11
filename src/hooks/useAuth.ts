@@ -11,28 +11,28 @@ export interface AuthState {
   isAdmin: boolean
 }
 
-// Admin check function temporarily disabled
-// const checkIsAdmin = async (user: User | null): Promise<boolean> => {
-//   if (!user?.id) return false
-//   
-//   try {
-//     const { data, error } = await supabase
-//       .from('admins')
-//       .select('user_id')
-//       .eq('user_id', user.id)
-//       .maybeSingle()
-//     
-//     if (error) {
-//       console.error('Admin check error:', error)
-//       return false
-//     }
-//     
-//     return !!data
-//   } catch (error) {
-//     console.error('Admin check exception:', error)
-//     return false
-//   }
-// }
+// Admin check function 
+const checkIsAdmin = async (user: User | null): Promise<boolean> => {
+  if (!user?.id) return false
+  
+  try {
+    const { data, error } = await supabase
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    
+    if (error) {
+      console.error('Admin check error:', error)
+      return false
+    }
+    
+    return !!data
+  } catch (error) {
+    console.error('Admin check exception:', error)
+    return false
+  }
+}
 
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
@@ -68,18 +68,18 @@ export function useAuth() {
         
         // Check admin status if user exists
         if (user) {
-          // Temporarily disable admin check to fix loading issue
-          // TODO: Re-enable when admin table is set up
-          // try {
-          //   const isAdmin = await checkIsAdmin(user)
-          //   setAuthState(prev => ({
-          //     ...prev,
-          //     isAdmin
-          //   }))
-          // } catch (error) {
-          //   console.error('Admin check failed:', error)
-          //   // Keep isAdmin as false if check fails
-          // }
+          console.log('🔑 Current user ID for admin setup:', user.id)
+          try {
+            const isAdmin = await checkIsAdmin(user)
+            console.log('🔐 Admin check result:', isAdmin)
+            setAuthState(prev => ({
+              ...prev,
+              isAdmin
+            }))
+          } catch (error) {
+            console.error('Admin check failed:', error)
+            // Keep isAdmin as false if check fails
+          }
         }
       } catch (error) {
         console.error('Initial session catch:', error)
@@ -116,18 +116,18 @@ export function useAuth() {
         
         // Check admin status if user exists
         if (user) {
-          // Temporarily disable admin check to fix loading issue
-          // TODO: Re-enable when admin table is set up
-          // try {
-          //   const isAdmin = await checkIsAdmin(user)
-          //   setAuthState(prev => ({
-          //     ...prev,
-          //     isAdmin
-          //   }))
-          // } catch (error) {
-          //   console.error('Admin check failed:', error)
-          //   // Keep isAdmin as false if check fails
-          // }
+          console.log('🔑 Current user ID for admin setup:', user.id)
+          try {
+            const isAdmin = await checkIsAdmin(user)
+            console.log('🔐 Admin check result:', isAdmin)
+            setAuthState(prev => ({
+              ...prev,
+              isAdmin
+            }))
+          } catch (error) {
+            console.error('Admin check failed:', error)
+            // Keep isAdmin as false if check fails
+          }
         }
       }
     )
