@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { supabase, type UserProfilePublic, type Prediction, type Track } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,8 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Users, 
   TrendingUp, 
-  RefreshCw, 
-  Calendar,
+  RefreshCw,
   Trophy,
   Loader2
 } from 'lucide-react'
