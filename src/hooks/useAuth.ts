@@ -57,29 +57,38 @@ export function useAuth() {
         
         const user = session?.user ?? null
         
-        // Set initial state with user, then check admin status
-        setAuthState({
-          user,
-          session,
-          loading: false,
-          error: null,
-          isAdmin: false
-        })
-        
-        // Check admin status if user exists
+        // Check admin status if user exists, then set complete state
         if (user) {
           console.log('🔑 Current user ID for admin setup:', user.id)
           try {
             const isAdmin = await checkIsAdmin(user)
             console.log('🔐 Admin check result:', isAdmin)
-            setAuthState(prev => ({
-              ...prev,
+            setAuthState({
+              user,
+              session,
+              loading: false,
+              error: null,
               isAdmin
-            }))
+            })
           } catch (error) {
             console.error('Admin check failed:', error)
-            // Keep isAdmin as false if check fails
+            setAuthState({
+              user,
+              session,
+              loading: false,
+              error: null,
+              isAdmin: false
+            })
           }
+        } else {
+          // No user, set state without admin check
+          setAuthState({
+            user,
+            session,
+            loading: false,
+            error: null,
+            isAdmin: false
+          })
         }
       } catch (error) {
         console.error('Initial session catch:', error)
@@ -105,29 +114,38 @@ export function useAuth() {
           trackAuth('logout')
         }
         
-        // Set initial state with user, then check admin status
-        setAuthState({
-          user,
-          session,
-          loading: false,
-          error: null,
-          isAdmin: false
-        })
-        
-        // Check admin status if user exists
+        // Check admin status if user exists, then set complete state
         if (user) {
           console.log('🔑 Current user ID for admin setup:', user.id)
           try {
             const isAdmin = await checkIsAdmin(user)
             console.log('🔐 Admin check result:', isAdmin)
-            setAuthState(prev => ({
-              ...prev,
+            setAuthState({
+              user,
+              session,
+              loading: false,
+              error: null,
               isAdmin
-            }))
+            })
           } catch (error) {
             console.error('Admin check failed:', error)
-            // Keep isAdmin as false if check fails
+            setAuthState({
+              user,
+              session,
+              loading: false,
+              error: null,
+              isAdmin: false
+            })
           }
+        } else {
+          // No user, set state without admin check
+          setAuthState({
+            user,
+            session,
+            loading: false,
+            error: null,
+            isAdmin: false
+          })
         }
       }
     )

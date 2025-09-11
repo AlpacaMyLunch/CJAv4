@@ -11,8 +11,11 @@ export function AdminGuard({ children, fallbackPath = '/' }: AdminGuardProps) {
   const { isAuthenticated, isAdmin, loading } = useAuth()
   const navigate = useNavigate()
 
+  console.log('🛡️ AdminGuard check:', { isAuthenticated, isAdmin, loading })
+
   useEffect(() => {
     if (!loading && (!isAuthenticated || !isAdmin)) {
+      console.log('🚫 AdminGuard redirecting due to:', { isAuthenticated, isAdmin, loading })
       navigate(fallbackPath, { replace: true })
     }
   }, [isAuthenticated, isAdmin, loading, navigate, fallbackPath])
