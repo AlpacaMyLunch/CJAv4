@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { ThemeProvider } from './components/ThemeProvider'
 import { ToastProvider } from './hooks/useToast'
 import { Layout } from './components/Layout'
@@ -8,12 +9,26 @@ import { LandingPage } from './pages/LandingPage'
 import { Nostradouglas } from './pages/Nostradouglas'
 import { CommunityPredictions } from './pages/CommunityPredictions'
 import { Placeholder } from './pages/Placeholder'
+import { trackPageView } from './utils/analytics'
+
+// Component to track page views
+function PageTracker() {
+  const location = useLocation()
+
+  useEffect(() => {
+    // Track page view when location changes
+    trackPageView(window.location.href, document.title)
+  }, [location])
+
+  return null
+}
 
 function App() {
   return (
     <ThemeProvider defaultTheme="dark">
       <ToastProvider>
         <Router>
+          <PageTracker />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route

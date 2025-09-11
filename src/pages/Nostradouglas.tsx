@@ -33,6 +33,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { type Track } from '@/lib/supabase'
+import { trackPrediction, trackUserAction } from '@/utils/analytics'
 
 interface PredictionTrack extends Track {
   position: number
@@ -218,6 +219,13 @@ export function Nostradouglas() {
         position: selectedTracks.length + 1
       }
       setSelectedTracks([...selectedTracks, newTrack])
+      
+      // Track track selection
+      trackUserAction('track_selected', {
+        track_name: track.name,
+        position: selectedTracks.length + 1,
+        total_selected: selectedTracks.length + 1
+      })
     }
   }
 
@@ -244,6 +252,17 @@ export function Nostradouglas() {
 
   const removeTrack = (trackId: string) => {
     if (!isDeadlinePassed && isAuthenticated) {
+      const trackToRemove = selectedTracks.find(track => track.id === trackId)
+      
+      // Track track removal
+      if (trackToRemove) {
+        trackUserAction('track_removed', {
+          track_name: trackToRemove.name,
+          position: trackToRemove.position,
+          total_selected: selectedTracks.length - 1
+        })
+      }
+      
       const newTracks = selectedTracks
         .filter(track => track.id !== trackId)
         .map((track, index) => ({
@@ -256,6 +275,9 @@ export function Nostradouglas() {
 
   const resetPrediction = () => {
     if (!isDeadlinePassed && isAuthenticated) {
+      // Track prediction reset
+      trackPrediction('clear', { track_count: selectedTracks.length })
+      
       setSelectedTracks([])
     }
   }
@@ -287,6 +309,10 @@ export function Nostradouglas() {
       }))
       
       await savePredictions(trackPredictions)
+      
+      // Track prediction save
+      trackPrediction('save', { track_count: selectedTracks.length })
+      
       addToast({
         title: 'Success!',
         description: 'Your prediction has been saved successfully.',

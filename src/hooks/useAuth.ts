@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type User, type Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { trackAuth } from '@/utils/analytics'
 
 export interface AuthState {
   user: User | null
@@ -94,8 +95,15 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         const user = session?.user ?? null
+        
+        // Track authentication events
+        if (event === 'SIGNED_IN' && user) {
+          trackAuth('login')
+        } else if (event === 'SIGNED_OUT') {
+          trackAuth('logout')
+        }
         
         // Set initial state with user, then check admin status
         setAuthState({
