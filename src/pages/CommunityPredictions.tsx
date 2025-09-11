@@ -11,14 +11,11 @@ import { Button } from '@/components/ui/button'
 import { formatDriverName } from '@/utils/formatting'
 
 const DIVISIONS = [1, 2, 3, 4, 5, 6]
-const SPLITS = ['Gold', 'Silver'] as const
 
 export function CommunityPredictions() {
   const { user, loading: authLoading } = useAuth()
   const { schedule, loading: scheduleLoading, deadline, isDeadlinePassed } = useCurrentRace()
   const { 
-    drivers, 
-    predictions, 
     loading: predictionsLoading, 
     saving,
     error,

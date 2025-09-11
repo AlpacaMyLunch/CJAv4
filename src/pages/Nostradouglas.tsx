@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeasonData } from '@/hooks/useSeasonData'
 import { usePredictions } from '@/hooks/usePredictions'
@@ -51,7 +50,6 @@ function SortableTrackCard({ track, position, onRemove }: {
     setNodeRef,
     transform,
     transition,
-    isDragging,
   } = useSortable({ id: track.id })
 
   const style = {

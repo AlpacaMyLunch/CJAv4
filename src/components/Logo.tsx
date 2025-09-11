@@ -1,15 +1,10 @@
-import { useTheme } from '@/hooks/useTheme'
-
 interface LogoProps {
   className?: string
   alt?: string
 }
 
 export function Logo({ className = "", alt = "Coach Jeffries Academy" }: LogoProps) {
-  const { theme } = useTheme()
-  
-  // Use dark logo for dark theme, light logo for all other themes
-  // const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo-light.png'
+  // Use light logo for all themes for now
   const logoSrc = '/logo-light.png'
   return (
     <img 

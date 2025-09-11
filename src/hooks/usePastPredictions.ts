@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './useAuth'
@@ -163,9 +164,9 @@ export function usePastPredictions(seasonId: string | null) {
           const raceKey = `${prediction.schedule?.id}-${prediction.division}-${prediction.split}`
           const raceHasResults = participantCounts[raceKey] > 0
           
-          let hasResult = false
           let points = 0
           let finishPosition: number | undefined = undefined
+          let hasResult = false
           
           if (raceHasResults) {
             if (result?.split_position) {

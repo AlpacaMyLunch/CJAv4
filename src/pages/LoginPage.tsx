@@ -35,7 +35,7 @@ export function LoginPage() {
         
         <CardContent>
           <Button 
-            onClick={signInWithDiscord}
+            onClick={() => signInWithDiscord()}
             className="w-full"
             size="lg"
           >

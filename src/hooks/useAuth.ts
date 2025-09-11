@@ -10,27 +10,28 @@ export interface AuthState {
   isAdmin: boolean
 }
 
-const checkIsAdmin = async (user: User | null): Promise<boolean> => {
-  if (!user?.id) return false
-  
-  try {
-    const { data, error } = await supabase
-      .from('admins')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
-    
-    if (error) {
-      console.error('Admin check error:', error)
-      return false
-    }
-    
-    return !!data
-  } catch (error) {
-    console.error('Admin check exception:', error)
-    return false
-  }
-}
+// Admin check function temporarily disabled
+// const checkIsAdmin = async (user: User | null): Promise<boolean> => {
+//   if (!user?.id) return false
+//   
+//   try {
+//     const { data, error } = await supabase
+//       .from('admins')
+//       .select('user_id')
+//       .eq('user_id', user.id)
+//       .maybeSingle()
+//     
+//     if (error) {
+//       console.error('Admin check error:', error)
+//       return false
+//     }
+//     
+//     return !!data
+//   } catch (error) {
+//     console.error('Admin check exception:', error)
+//     return false
+//   }
+// }
 
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
@@ -93,7 +94,7 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         const user = session?.user ?? null
         
         // Set initial state with user, then check admin status

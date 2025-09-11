@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
-import { Trophy, Users, TrendingUp, Calendar } from 'lucide-react'
+import { Trophy, Users, TrendingUp } from 'lucide-react'
 
 export function LandingPage() {
   const { isAuthenticated, isAdmin, signInWithDiscord } = useAuth()
@@ -96,7 +96,7 @@ export function LandingPage() {
           </div>
           
           <div className="grid md:grid-cols-2 gap-8">
-            {features.map((feature, index) => {
+            {features.map((feature) => {
               const IconComponent = feature.icon
               return (
                 <Card key={feature.title} className="relative group hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 ease-out hover:scale-[1.02] cursor-pointer bg-card/50 backdrop-blur-sm">
