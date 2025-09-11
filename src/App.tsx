@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage'
 import { LandingPage } from './pages/LandingPage'
 import { Nostradouglas } from './pages/Nostradouglas'
 import { CommunityPredictions } from './pages/CommunityPredictions'
+import { AdminDashboard } from './pages/AdminDashboard'
 import { Placeholder } from './pages/Placeholder'
 import { trackPageView } from './utils/analytics'
 
@@ -45,6 +46,14 @@ function App() {
                       element={
                         <AdminGuard>
                           <CommunityPredictions />
+                        </AdminGuard>
+                      } 
+                    />
+                    <Route 
+                      path="/admin" 
+                      element={
+                        <AdminGuard>
+                          <AdminDashboard />
                         </AdminGuard>
                       } 
                     />

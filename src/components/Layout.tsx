@@ -10,6 +10,7 @@ const navigationItems = [
   { name: 'Home', href: '/' },
   { name: 'Nostradouglas', href: '/nostradouglas' },
   { name: 'Predictions', href: '/community', adminOnly: true },
+  { name: 'Admin', href: '/admin', adminOnly: true },
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {
