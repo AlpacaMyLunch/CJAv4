@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { type User, type Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { trackAuth } from '@/utils/analytics'
@@ -11,9 +11,17 @@ export interface AuthState {
   isAdmin: boolean
 }
 
-// Admin check function 
+// Admin check cache to prevent excessive API calls
+const adminCheckCache = new Map<string, boolean>()
+
+// Admin check function with caching
 const checkIsAdmin = async (user: User | null): Promise<boolean> => {
   if (!user?.id) return false
+  
+  // Check cache first
+  if (adminCheckCache.has(user.id)) {
+    return adminCheckCache.get(user.id)!
+  }
   
   try {
     const { data, error } = await supabase
@@ -23,11 +31,15 @@ const checkIsAdmin = async (user: User | null): Promise<boolean> => {
       .maybeSingle()
     
     if (error) {
+      adminCheckCache.set(user.id, false)
       return false
     }
     
-    return !!data
+    const isAdmin = !!data
+    adminCheckCache.set(user.id, isAdmin)
+    return isAdmin
   } catch {
+    adminCheckCache.set(user.id, false)
     return false
   }
 }
@@ -40,7 +52,7 @@ export function useAuth() {
     error: null,
     isAdmin: false
   })
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
+  const initialLoadCompleteRef = useRef(false)
 
   useEffect(() => {
     // Get initial session
@@ -50,7 +62,7 @@ export function useAuth() {
         
         if (error) {
           setAuthState(prev => ({ ...prev, error, loading: false }))
-          setInitialLoadComplete(true)
+          initialLoadCompleteRef.current = true
           return
         }
         
@@ -67,7 +79,7 @@ export function useAuth() {
               error: null,
               isAdmin
             })
-            setInitialLoadComplete(true)
+            initialLoadCompleteRef.current = true
           } catch {
             setAuthState({
               user,
@@ -76,7 +88,7 @@ export function useAuth() {
               error: null,
               isAdmin: false
             })
-            setInitialLoadComplete(true)
+            initialLoadCompleteRef.current = true
           }
         } else {
           // No user, set state without admin check
@@ -87,7 +99,7 @@ export function useAuth() {
             error: null,
             isAdmin: false
           })
-          setInitialLoadComplete(true)
+          initialLoadCompleteRef.current = true
         }
       } catch (error) {
         setAuthState(prev => ({ 
@@ -95,7 +107,7 @@ export function useAuth() {
           error: error as AuthError, 
           loading: false 
         }))
-        setInitialLoadComplete(true)
+        initialLoadCompleteRef.current = true
       }
     }
 
@@ -105,7 +117,7 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         // Skip auth state changes until initial load is complete
-        if (!initialLoadComplete) return
+        if (!initialLoadCompleteRef.current) return
         const user = session?.user ?? null
         
         // Track authentication events
@@ -126,7 +138,6 @@ export function useAuth() {
               error: null,
               isAdmin
             })
-            setInitialLoadComplete(true)
           } catch {
             setAuthState({
               user,
@@ -135,7 +146,6 @@ export function useAuth() {
               error: null,
               isAdmin: false
             })
-            setInitialLoadComplete(true)
           }
         } else {
           // No user, set state without admin check
