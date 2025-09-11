@@ -248,7 +248,7 @@ export function AdminDashboard() {
         
         // Create config for this week's chart
         const config: ChartConfig = {}
-        chartData.forEach((item, index) => {
+        chartData.forEach((item) => {
           config[item.name] = {
             label: item.name,
           }
@@ -572,7 +572,7 @@ export function AdminDashboard() {
                       const chartData = calculateChartDataWithStats(baseChartData)
                       
                       const config: ChartConfig = {}
-                      chartData.forEach((item, index) => {
+                      chartData.forEach((item) => {
                         config[item.name] = { label: item.name }
                       })
 

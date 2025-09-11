@@ -34,7 +34,7 @@ interface ChartContainerProps {
   className?: string
 }
 
-export function ChartContainer({ config, children, className }: ChartContainerProps) {
+export function ChartContainer({ children, className }: ChartContainerProps) {
   return (
     <div className={cn("w-full", className)} style={{
       "--chart-1": "220 70% 50%",
@@ -62,7 +62,7 @@ interface ChartTooltipProps {
   label?: string
 }
 
-export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
+export function ChartTooltip({ active, payload }: ChartTooltipProps) {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-background p-2 shadow-sm">
@@ -131,7 +131,7 @@ export function PieChartComponent({ data, config, className, dataKey = "value" }
             dataKey={dataKey}
             label={(entry) => `${entry.value}`}
           >
-            {data.map((entry, index) => (
+            {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
             ))}
           </Pie>

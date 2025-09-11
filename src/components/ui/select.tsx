@@ -56,7 +56,7 @@ const Select = ({ value, onValueChange, children, defaultValue }: SelectProps) =
 }
 
 const SelectTrigger = ({ className, children, ...props }: SelectTriggerProps & any) => {
-  const { isOpen, setIsOpen, selectedValue } = props
+  const { isOpen, setIsOpen } = props
   
   return (
     <button
