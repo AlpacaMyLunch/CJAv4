@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Calendar, Target, Medal, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePastPredictions, type PastPredictionWithResult, type WeeklyScore } from '@/hooks/usePastPredictions'
-import { formatDriverName } from '@/utils/formatting'  
+import { DriverDisplay } from '@/components/DriverDisplay'  
 
 interface PastPicksProps {
   seasonId: string | null
@@ -120,7 +120,18 @@ function PredictionRow({ prediction }: { prediction: PastPredictionWithResult })
             <div className={`font-medium text-sm ${
               isMissingPrediction ? 'text-destructive italic' : ''
             }`}>
-              {isMissingPrediction ? 'No Prediction Made' : formatDriverName(prediction.predicted_driver)}
+              {isMissingPrediction ? 'No Prediction Made' : (
+                <DriverDisplay 
+                  driver={{
+                    division: prediction.division,
+                    division_split: prediction.split,
+                    driver_number: prediction.predicted_driver.driver_number || null,
+                    first_name: prediction.predicted_driver.first_name || null,
+                    last_name: prediction.predicted_driver.last_name || null
+                  }}
+                  imageSize="sm"
+                />
+              )}
             </div>
             {isMissingPrediction && (
               <div className="text-xs text-destructive/70">

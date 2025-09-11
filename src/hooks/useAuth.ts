@@ -27,7 +27,7 @@ const checkIsAdmin = async (user: User | null): Promise<boolean> => {
     }
     
     return !!data
-  } catch (error) {
+  } catch {
     return false
   }
 }
@@ -68,7 +68,7 @@ export function useAuth() {
               isAdmin
             })
             setInitialLoadComplete(true)
-          } catch (error) {
+          } catch {
             setAuthState({
               user,
               session,
@@ -127,7 +127,7 @@ export function useAuth() {
               isAdmin
             })
             setInitialLoadComplete(true)
-          } catch (error) {
+          } catch {
             setAuthState({
               user,
               session,
@@ -151,6 +151,7 @@ export function useAuth() {
     )
 
     return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const signInWithDiscord = async (redirectTo?: string) => {

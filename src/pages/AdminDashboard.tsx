@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { PieChartComponent, type ChartData, type ChartConfig } from '@/components/ui/chart'
+import { DriverDisplay } from '@/components/DriverDisplay'
 
 interface NostradouglasPrediction {
   id: string
@@ -53,15 +54,6 @@ interface UserWithPredictions {
 }
 
 
-// Helper function to format driver name with number and full name
-const formatDriverName = (prediction: CommunityPrediction): string => {
-  const number = prediction.driver_number ? `#${prediction.driver_number} ` : ''
-  const firstName = prediction.driver_first_name || ''
-  const lastName = prediction.driver_last_name || ''
-  const fullName = `${firstName} ${lastName}`.trim()
-  
-  return `${number}${fullName || prediction.driver_name || 'Unknown Driver'}`
-}
 
 // Helper function to calculate chart data with totals and percentages
 const calculateChartDataWithStats = (data: ChartData[]): ChartData[] => {
@@ -561,7 +553,7 @@ export function AdminDashboard() {
                       
                       const driverCounts = new Map<string, number>()
                       divisionSplitPredictions.forEach(prediction => {
-                        const driverName = formatDriverName(prediction)
+                        const driverName = `${prediction.driver_number ? `#${prediction.driver_number} ` : ''}${prediction.driver_first_name || ''} ${prediction.driver_last_name || ''}`.trim() || prediction.driver_name || 'Unknown Driver'
                         driverCounts.set(driverName, (driverCounts.get(driverName) || 0) + 1)
                       })
                       
@@ -634,8 +626,18 @@ export function AdminDashboard() {
                               <div className="text-sm font-medium mb-1">
                                 Week {prediction.week} - {prediction.track_name}
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                Div {prediction.division} {prediction.split}: {formatDriverName(prediction)}
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span>Div {prediction.division} {prediction.split}:</span>
+                                <DriverDisplay 
+                                  driver={{
+                                    division: prediction.division,
+                                    division_split: prediction.split as 'Gold' | 'Silver',
+                                    driver_number: prediction.driver_number,
+                                    first_name: prediction.driver_first_name,
+                                    last_name: prediction.driver_last_name
+                                  }}
+                                  imageSize="sm"
+                                />
                               </div>
                             </div>
                           ))}

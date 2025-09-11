@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import { PastPicks } from '@/components/PastPicks'
 import { Leaderboard } from '@/components/Leaderboard'
 import { Button } from '@/components/ui/button'
+import { DriverDisplay } from '@/components/DriverDisplay'
 import { formatDriverName } from '@/utils/formatting'
 
 const DIVISIONS = [1, 2, 3, 4, 5, 6]
@@ -307,9 +308,16 @@ export function CommunityPredictions() {
                               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                                 {isDeadlinePassed ? 'Final Prediction' : 'Current Prediction'}
                               </p>
-                              <p className="font-medium text-card-foreground">
-                                {formatDriverName(goldSelected)}
-                              </p>
+                              <DriverDisplay 
+                                driver={{
+                                  division: goldSelected.division,
+                                  division_split: goldSelected.division_split,
+                                  driver_number: goldSelected.driver_number,
+                                  first_name: goldSelected.first_name,
+                                  last_name: goldSelected.last_name
+                                }}
+                                imageSize="sm"
+                              />
                             </div>
                           ) : isDeadlinePassed ? (
                             <div className="p-4 rounded-lg bg-muted/20 border border-border text-center hover:bg-muted/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
@@ -360,9 +368,16 @@ export function CommunityPredictions() {
                               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                                 {isDeadlinePassed ? 'Final Prediction' : 'Current Prediction'}
                               </p>
-                              <p className="font-medium text-card-foreground">
-                                {formatDriverName(silverSelected)}
-                              </p>
+                              <DriverDisplay 
+                                driver={{
+                                  division: silverSelected.division,
+                                  division_split: silverSelected.division_split,
+                                  driver_number: silverSelected.driver_number,
+                                  first_name: silverSelected.first_name,
+                                  last_name: silverSelected.last_name
+                                }}
+                                imageSize="sm"
+                              />
                             </div>
                           ) : isDeadlinePassed ? (
                             <div className="p-4 rounded-lg bg-muted/20 border border-border text-center hover:bg-muted/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
