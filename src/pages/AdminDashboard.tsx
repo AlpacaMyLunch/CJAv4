@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { PieChartComponent, type ChartData, type ChartConfig } from '@/components/ui/chart'
 import { DriverDisplay } from '@/components/DriverDisplay'
+import { DivisionSplitLabel } from '@/components/DivisionSplitLabel'
 
 interface NostradouglasPrediction {
   id: string
@@ -570,9 +571,14 @@ export function AdminDashboard() {
 
                       return (
                         <div key={`${division}-${split}`} className="space-y-4">
-                          <h4 className="text-sm font-medium text-center">
-                            Division {division} - {split}
-                          </h4>
+                          <div className="flex justify-center">
+                            <DivisionSplitLabel 
+                              division={division}
+                              split={split as 'Gold' | 'Silver'}
+                              imageSize="sm"
+                              textSize="sm"
+                            />
+                          </div>
                           {chartData.length > 0 ? (
                             <div className="h-64">
                               <PieChartComponent
@@ -627,6 +633,13 @@ export function AdminDashboard() {
                                 Week {prediction.week} - {prediction.track_name}
                               </div>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <DivisionSplitLabel 
+                                  division={prediction.division}
+                                  split={prediction.split as 'Gold' | 'Silver'}
+                                  imageSize="xs"
+                                  textSize="sm"
+                                  showText={false}
+                                />
                                 <span>Div {prediction.division} {prediction.split}:</span>
                                 <DriverDisplay 
                                   driver={{

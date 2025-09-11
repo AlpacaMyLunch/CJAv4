@@ -9,6 +9,7 @@ import { PastPicks } from '@/components/PastPicks'
 import { Leaderboard } from '@/components/Leaderboard'
 import { Button } from '@/components/ui/button'
 import { DriverDisplay } from '@/components/DriverDisplay'
+import { DivisionSplitLabel } from '@/components/DivisionSplitLabel'
 import { formatDriverName } from '@/utils/formatting'
 
 const DIVISIONS = [1, 2, 3, 4, 5, 6]
@@ -287,8 +288,12 @@ export function CommunityPredictions() {
                     {/* Gold Split */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-4 h-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full" />
-                        <h3 className="font-semibold text-card-foreground">Gold Split</h3>
+                        <DivisionSplitLabel 
+                          division={division}
+                          split="Gold"
+                          imageSize="sm"
+                          textSize="md"
+                        />
                         {goldSelected && (
                           <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
                         )}
@@ -347,8 +352,12 @@ export function CommunityPredictions() {
                     {/* Silver Split */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-4 h-4 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full" />
-                        <h3 className="font-semibold text-card-foreground">Silver Split</h3>
+                        <DivisionSplitLabel 
+                          division={division}
+                          split="Silver"
+                          imageSize="sm"
+                          textSize="md"
+                        />
                         {silverSelected && (
                           <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
                         )}

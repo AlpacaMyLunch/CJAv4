@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { DivisionSplitImage } from "@/components/DivisionSplitImage"
 
 interface DriverDisplayProps {
   driver: {
@@ -9,7 +10,7 @@ interface DriverDisplayProps {
     last_name: string | null
   }
   className?: string
-  imageSize?: 'sm' | 'md' | 'lg'
+  imageSize?: 'xs' | 'sm' | 'md' | 'lg'
   showNumber?: boolean
   showName?: boolean
 }
@@ -21,23 +22,6 @@ export function DriverDisplay({
   showNumber = true,
   showName = true 
 }: DriverDisplayProps) {
-  const getImagePath = () => {
-    if (!driver.division || !driver.division_split) {
-      return '/sra/driver_not_rated.png'
-    }
-    
-    const divisionSplit = `division_${driver.division}_${driver.division_split.toLowerCase()}`
-    return `/sra/${divisionSplit}.png`
-  }
-
-  const getImageSizeClass = () => {
-    switch (imageSize) {
-      case 'sm': return 'w-8 h-8'
-      case 'md': return 'w-12 h-12'
-      case 'lg': return 'w-16 h-16'
-      default: return 'w-12 h-12'
-    }
-  }
 
   const getDriverName = () => {
     const fullName = `${driver.first_name || ''} ${driver.last_name || ''}`.trim()
@@ -50,14 +34,10 @@ export function DriverDisplay({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <img 
-        src={getImagePath()} 
-        alt={`Division ${driver.division || 'Not Rated'} ${driver.division_split || ''}`}
-        className={cn("object-contain", getImageSizeClass())}
-        onError={(e) => {
-          // Fallback to driver_not_rated.png if division image doesn't exist
-          e.currentTarget.src = '/sra/driver_not_rated.png'
-        }}
+      <DivisionSplitImage 
+        division={driver.division}
+        split={driver.division_split}
+        size={imageSize}
       />
       
       <div className="flex flex-col min-w-0">
