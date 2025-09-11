@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Calendar, Target, Medal, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePastPredictions, type PastPredictionWithResult, type WeeklyScore } from '@/hooks/usePastPredictions'
-import { DriverDisplay } from '@/components/DriverDisplay'  
+import { DriverDisplay } from '@/components/DriverDisplay'
+import { DivisionSplitLabel } from '@/components/DivisionSplitLabel'  
 
 interface PastPicksProps {
   seasonId: string | null
@@ -97,17 +98,14 @@ function PredictionRow({ prediction }: { prediction: PastPredictionWithResult })
       }`}
     >
       {/* Division & Split */}
-      <div className="col-span-2 flex items-center">
-        <div className="text-center">
-          <div className="text-sm font-medium">D{prediction.division}</div>
-          <div className={`text-xs px-1 rounded ${
-            prediction.split === 'Gold' 
-              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
-              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-          }`}>
-            {prediction.split}
-          </div>
-        </div>
+      <div className="col-span-2 flex items-center justify-center">
+        <DivisionSplitLabel 
+          division={prediction.division}
+          split={prediction.split}
+          imageSize="sm"
+          textSize="sm"
+          showText={false}
+        />
       </div>
 
       {/* Driver */}

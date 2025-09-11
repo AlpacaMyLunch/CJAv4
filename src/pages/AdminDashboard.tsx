@@ -640,7 +640,7 @@ export function AdminDashboard() {
                                   textSize="sm"
                                   showText={false}
                                 />
-                                <span>Div {prediction.division} {prediction.split}:</span>
+                                
                                 <DriverDisplay 
                                   driver={{
                                     division: prediction.division,
