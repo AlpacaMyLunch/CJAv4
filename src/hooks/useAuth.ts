@@ -154,10 +154,13 @@ export function useAuth() {
   }, [])
 
   const signInWithDiscord = async (redirectTo?: string) => {
+    const currentOrigin = window.location.origin
+    const finalRedirectUrl = redirectTo || `${currentOrigin}/`
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: redirectTo || `${window.location.origin}/`
+        redirectTo: finalRedirectUrl
       }
     })
     

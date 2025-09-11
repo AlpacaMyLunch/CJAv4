@@ -6,24 +6,70 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select'
+import { 
   Users, 
   TrendingUp, 
   RefreshCw,
   Trophy,
   Loader2
 } from 'lucide-react'
+import { PieChartComponent, type ChartData, type ChartConfig } from '@/components/ui/chart'
+
+interface NostradouglasPrediction {
+  id: string
+  track_id: string
+  track_name: string
+  position: number
+}
+
+interface CommunityPrediction {
+  id: string
+  schedule_id: string
+  division: number
+  split: string
+  driver_id: string
+  driver_name: string
+  driver_number: number | null
+  driver_first_name: string | null
+  driver_last_name: string | null
+  week: number
+  track_name: string
+}
 
 interface UserWithPredictions {
   user_id: string
   display_name: string
   created_at: string
-  predictions: Array<{
-    id: string
-    track_id: string
-    track_name: string
-    position: number
-  }>
-  prediction_count: number
+  nostradouglas_predictions: NostradouglasPrediction[]
+  community_predictions: CommunityPrediction[]
+  nostradouglas_count: number
+  community_count: number
+}
+
+
+// Helper function to format driver name with number and full name
+const formatDriverName = (prediction: CommunityPrediction): string => {
+  const number = prediction.driver_number ? `#${prediction.driver_number} ` : ''
+  const firstName = prediction.driver_first_name || ''
+  const lastName = prediction.driver_last_name || ''
+  const fullName = `${firstName} ${lastName}`.trim()
+  
+  return `${number}${fullName || prediction.driver_name || 'Unknown Driver'}`
+}
+
+// Helper function to calculate chart data with totals and percentages
+const calculateChartDataWithStats = (data: ChartData[]): ChartData[] => {
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+  return data.map(item => ({
+    ...item,
+    name: `${item.name} (${item.value}, ${((item.value / total) * 100).toFixed(1)}%)`
+  }))
 }
 
 export function AdminDashboard() {
@@ -32,10 +78,16 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [weeklyTrackData, setWeeklyTrackData] = useState<Array<{week: number, data: ChartData[], config: ChartConfig}>>([]);
+  const [communityData, setCommunityData] = useState<CommunityPrediction[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [availableWeeks, setAvailableWeeks] = useState<number[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
-    usersWithPredictions: 0,
-    totalPredictions: 0
+    usersWithNostradouglas: 0,
+    usersWithCommunityPredictions: 0,
+    totalNostradouglas: 0,
+    totalCommunityPredictions: 0
   })
 
   const fetchAdminData = async () => {
@@ -44,9 +96,9 @@ export function AdminDashboard() {
     try {
       setError(null)
       
-      // Fetch all users
+      // Fetch all users using admin view
       const { data: usersData, error: usersError } = await supabase
-        .from('user_profiles_public')
+        .from('admin_users_view')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -66,65 +118,146 @@ export function AdminDashboard() {
       if (!currentSeason) {
         setUsers(usersData?.map(user => ({
           ...user,
-          predictions: [],
-          prediction_count: 0
+          nostradouglas_predictions: [],
+          community_predictions: [],
+          nostradouglas_count: 0,
+          community_count: 0
         })) || [])
         setStats({
           totalUsers: usersData?.length || 0,
-          usersWithPredictions: 0,
-          totalPredictions: 0
+          usersWithNostradouglas: 0,
+          usersWithCommunityPredictions: 0,
+          totalNostradouglas: 0,
+          totalCommunityPredictions: 0
         })
         return
       }
 
-      // Fetch all predictions for current season with track names
-      const { data: predictionsData, error: predictionsError } = await supabase
-        .from('predictions')
-        .select(`
-          *,
-          tracks (
-            name
-          )
-        `)
+      // Fetch Nostradouglas predictions using admin view
+      const { data: nostradouglasData, error: nostradouglasError } = await supabase
+        .from('admin_nostradouglas_view')
+        .select('*')
         .eq('season_id', currentSeason.id)
         .order('position', { ascending: true })
 
-      if (predictionsError) throw predictionsError
+      if (nostradouglasError) throw nostradouglasError
 
-      // Group predictions by user
-      const userPredictions = new Map<string, Array<{
-        id: string
-        track_id: string
-        track_name: string
-        position: number
-      }>>()
+      // Fetch Community predictions using admin view
+      const { data: communityPredictionsData, error: communityError } = await supabase
+        .from('admin_predictions_view')
+        .select('*')
+        .eq('season_number', currentSeason.season_number)
+        .order('week', { ascending: false })
 
-      predictionsData?.forEach(prediction => {
+      if (communityError) {
+        console.warn('Community predictions fetch failed:', communityError)
+        // Continue without community predictions if they fail
+      }
+
+      // Group Nostradouglas predictions by user
+      const userNostradouglas = new Map<string, NostradouglasPrediction[]>()
+      nostradouglasData?.forEach(prediction => {
         const userId = prediction.user_id
-        if (!userPredictions.has(userId)) {
-          userPredictions.set(userId, [])
+        if (!userNostradouglas.has(userId)) {
+          userNostradouglas.set(userId, [])
         }
-        userPredictions.get(userId)?.push({
+        userNostradouglas.get(userId)?.push({
           id: prediction.id,
           track_id: prediction.track_id,
-          track_name: (prediction.tracks as any)?.name || 'Unknown Track',
+          track_name: prediction.track_name || 'Unknown Track',
           position: prediction.position
         })
+      })
+      
+      // Store community predictions and calculate available weeks
+      const allCommunityPredictions: CommunityPrediction[] = []
+      const weekSet = new Set<number>()
+      
+      // Group Community predictions by user
+      const userCommunity = new Map<string, CommunityPrediction[]>()
+      communityPredictionsData?.forEach(prediction => {
+        const userId = prediction.user_id
+        if (!userCommunity.has(userId)) {
+          userCommunity.set(userId, [])
+        }
+        const communityPrediction: CommunityPrediction = {
+          id: prediction.id,
+          schedule_id: prediction.schedule_id,
+          division: prediction.division,
+          split: prediction.split,
+          driver_id: prediction.driver_id,
+          driver_name: prediction.driver_name || 'Unknown Driver',
+          driver_number: prediction.driver_number,
+          driver_first_name: prediction.driver_first_name,
+          driver_last_name: prediction.driver_last_name,
+          week: prediction.week || 0,
+          track_name: prediction.track_name || 'Unknown Track'
+        }
+        
+        userCommunity.get(userId)?.push(communityPrediction)
+        allCommunityPredictions.push(communityPrediction)
+        weekSet.add(prediction.week || 0)
       })
 
       // Combine users with their predictions
       const usersWithPredictions = usersData?.map(user => ({
         ...user,
-        predictions: userPredictions.get(user.user_id) || [],
-        prediction_count: userPredictions.get(user.user_id)?.length || 0
+        user_id: user.id, // Add user_id for compatibility
+        nostradouglas_predictions: userNostradouglas.get(user.id) || [],
+        community_predictions: userCommunity.get(user.id) || [],
+        nostradouglas_count: userNostradouglas.get(user.id)?.length || 0,
+        community_count: userCommunity.get(user.id)?.length || 0
       })) || []
 
       setUsers(usersWithPredictions)
       setStats({
         totalUsers: usersData?.length || 0,
-        usersWithPredictions: usersWithPredictions.filter(u => u.prediction_count > 0).length,
-        totalPredictions: predictionsData?.length || 0
+        usersWithNostradouglas: usersWithPredictions.filter(u => u.nostradouglas_count > 0).length,
+        usersWithCommunityPredictions: usersWithPredictions.filter(u => u.community_count > 0).length,
+        totalNostradouglas: nostradouglasData?.length || 0,
+        totalCommunityPredictions: communityPredictionsData?.length || 0
       })
+
+      // Store community data and set available weeks
+      setCommunityData(allCommunityPredictions)
+      const weeks = Array.from(weekSet).sort((a, b) => b - a) // Most recent first
+      setAvailableWeeks(weeks)
+      
+      // Set default selected week to most recent week with predictions
+      if (weeks.length > 0 && selectedWeek === null) {
+        setSelectedWeek(weeks[0])
+      }
+
+      // Process data for weekly track charts
+      const weeklyData: Array<{week: number, data: ChartData[], config: ChartConfig}> = []
+      
+      for (let week = 1; week <= 8; week++) {
+        const weekPredictions = nostradouglasData?.filter(p => p.position === week) || []
+        const trackCounts = new Map<string, number>()
+        
+        weekPredictions.forEach(prediction => {
+          const trackName = prediction.track_name
+          trackCounts.set(trackName, (trackCounts.get(trackName) || 0) + 1)
+        })
+        
+        const baseChartData: ChartData[] = Array.from(trackCounts.entries())
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+        
+        const chartData = calculateChartDataWithStats(baseChartData)
+        
+        // Create config for this week's chart
+        const config: ChartConfig = {}
+        chartData.forEach((item, index) => {
+          config[item.name] = {
+            label: item.name,
+          }
+        })
+        
+        weeklyData.push({ week, data: chartData, config })
+      }
+      
+      setWeeklyTrackData(weeklyData)
 
     } catch (err) {
       console.error('Failed to fetch admin data:', err)
@@ -198,7 +331,7 @@ export function AdminDashboard() {
       )}
 
       {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
+      <div className="grid gap-4 md:grid-cols-5 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -210,23 +343,44 @@ export function AdminDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users with Predictions</CardTitle>
+            <CardTitle className="text-sm font-medium">Nostradouglas Users</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.usersWithPredictions}</div>
+            <div className="text-2xl font-bold">{stats.usersWithNostradouglas}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.totalUsers > 0 ? Math.round((stats.usersWithPredictions / stats.totalUsers) * 100) : 0}% participation
+              {stats.totalUsers > 0 ? Math.round((stats.usersWithNostradouglas / stats.totalUsers) * 100) : 0}% participation
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Predictions</CardTitle>
+            <CardTitle className="text-sm font-medium">Community Prediction Users</CardTitle>
             <Trophy className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalPredictions}</div>
+            <div className="text-2xl font-bold">{stats.usersWithCommunityPredictions}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalUsers > 0 ? Math.round((stats.usersWithCommunityPredictions / stats.totalUsers) * 100) : 0}% participation
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Track Predictions</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalNostradouglas}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Race Winner Predictions</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalCommunityPredictions}</div>
           </CardContent>
         </Card>
       </div>
@@ -234,7 +388,8 @@ export function AdminDashboard() {
       <Tabs defaultValue="users" className="space-y-4">
         <TabsList>
           <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="predictions">Predictions Overview</TabsTrigger>
+          <TabsTrigger value="nostradouglas">Nostradouglas</TabsTrigger>
+          <TabsTrigger value="community">Community Predictions</TabsTrigger>
         </TabsList>
         
         <TabsContent value="users" className="space-y-4">
@@ -242,7 +397,7 @@ export function AdminDashboard() {
             <CardHeader>
               <CardTitle>Users</CardTitle>
               <CardDescription>
-                All registered users and their prediction status
+                All registered users and their participation in both prediction games
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,12 +416,15 @@ export function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge variant={user.prediction_count > 0 ? "default" : "secondary"}>
-                        {user.prediction_count} predictions
+                      <Badge variant={user.nostradouglas_count > 0 ? "default" : "secondary"}>
+                        Nostradouglas: {user.nostradouglas_count}/8
                       </Badge>
-                      {user.prediction_count === 8 && (
+                      <Badge variant={user.community_count > 0 ? "default" : "secondary"}>
+                        Community Predictions: {user.community_count}
+                      </Badge>
+                      {user.nostradouglas_count === 8 && (
                         <Badge variant="outline" className="text-green-600">
-                          Complete
+                          Nostradouglas Complete
                         </Badge>
                       )}
                     </div>
@@ -277,28 +435,61 @@ export function AdminDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="predictions" className="space-y-4">
+        <TabsContent value="nostradouglas" className="space-y-4">
+          {/* Weekly Track Distribution Charts */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Track Predictions by Week</CardTitle>
+              <CardDescription>
+                Distribution of track predictions for each week position
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                {weeklyTrackData.map(({ week, data, config }) => (
+                  <div key={week} className="space-y-4">
+                    <h4 className="text-sm font-medium text-center">Week {week}</h4>
+                    {data.length > 0 ? (
+                      <div className="h-64">
+                        <PieChartComponent
+                          data={data}
+                          config={config}
+                          className="h-full"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-64 flex items-center justify-center text-muted-foreground">
+                        <p className="text-sm">No predictions</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Individual User Predictions */}
           <Card>
             <CardHeader>
               <CardTitle>Nostradouglas Predictions</CardTitle>
               <CardDescription>
-                Current track predictions by user
+                Track order predictions by user (predict which 8 tracks will be raced and in what order)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 {users
-                  .filter(user => user.prediction_count > 0)
+                  .filter(user => user.nostradouglas_count > 0)
                   .map((user) => (
                     <div key={user.user_id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold">{user.display_name}</h3>
-                        <Badge variant={user.prediction_count === 8 ? "default" : "secondary"}>
-                          {user.prediction_count}/8 tracks
+                        <Badge variant={user.nostradouglas_count === 8 ? "default" : "secondary"}>
+                          {user.nostradouglas_count}/8 tracks
                         </Badge>
                       </div>
                       <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-                        {user.predictions
+                        {user.nostradouglas_predictions
                           .sort((a, b) => a.position - b.position)
                           .map((prediction) => (
                             <div 
@@ -306,7 +497,7 @@ export function AdminDashboard() {
                               className="flex items-center justify-between p-2 bg-muted rounded"
                             >
                               <span className="text-sm font-medium">
-                                #{prediction.position}
+                                Week #{prediction.position}
                               </span>
                               <span className="text-sm text-muted-foreground">
                                 {prediction.track_name}
@@ -317,9 +508,144 @@ export function AdminDashboard() {
                     </div>
                   ))}
                 
-                {users.filter(user => user.prediction_count > 0).length === 0 && (
+                {users.filter(user => user.nostradouglas_count > 0).length === 0 && (
                   <p className="text-center text-muted-foreground py-8">
-                    No predictions have been made yet.
+                    No Nostradouglas predictions have been made yet.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="community" className="space-y-4">
+          {/* Week Selector and Division/Split Charts */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Community Predictions Overview</CardTitle>
+                  <CardDescription>
+                    Driver predictions by Division and Split for each week
+                  </CardDescription>
+                </div>
+                <div className="w-48">
+                  <Select
+                    value={selectedWeek?.toString() || ""}
+                    onValueChange={(value) => setSelectedWeek(parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select week..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableWeeks.map((week) => (
+                        <SelectItem key={week} value={week.toString()}>
+                          Week {week}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            {selectedWeek && (
+              <CardContent>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {[1, 2, 3, 4, 5, 6].map(division => 
+                    ['Gold', 'Silver'].map(split => {
+                      const divisionSplitPredictions = communityData.filter(p => 
+                        p.week === selectedWeek && 
+                        p.division === division && 
+                        p.split === split
+                      )
+                      
+                      const driverCounts = new Map<string, number>()
+                      divisionSplitPredictions.forEach(prediction => {
+                        const driverName = formatDriverName(prediction)
+                        driverCounts.set(driverName, (driverCounts.get(driverName) || 0) + 1)
+                      })
+                      
+                      const baseChartData: ChartData[] = Array.from(driverCounts.entries())
+                        .map(([name, value]) => ({ name, value }))
+                        .sort((a, b) => b.value - a.value)
+                      
+                      const chartData = calculateChartDataWithStats(baseChartData)
+                      
+                      const config: ChartConfig = {}
+                      chartData.forEach((item, index) => {
+                        config[item.name] = { label: item.name }
+                      })
+
+                      return (
+                        <div key={`${division}-${split}`} className="space-y-4">
+                          <h4 className="text-sm font-medium text-center">
+                            Division {division} - {split}
+                          </h4>
+                          {chartData.length > 0 ? (
+                            <div className="h-64">
+                              <PieChartComponent
+                                data={chartData}
+                                config={config}
+                                className="h-full"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-64 flex items-center justify-center text-muted-foreground">
+                              <p className="text-sm">No predictions</p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  ).flat()}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Individual User Predictions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Individual User Predictions</CardTitle>
+              <CardDescription>
+                Race winner predictions by user (predict who will win each race)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {users
+                  .filter(user => user.community_count > 0)
+                  .map((user) => (
+                    <div key={user.user_id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold">{user.display_name}</h3>
+                        <Badge variant="default">
+                          {user.community_count} race predictions
+                        </Badge>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                        {user.community_predictions
+                          .sort((a, b) => a.week - b.week)
+                          .map((prediction) => (
+                            <div 
+                              key={prediction.id}
+                              className="p-3 bg-muted rounded"
+                            >
+                              <div className="text-sm font-medium mb-1">
+                                Week {prediction.week} - {prediction.track_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Div {prediction.division} {prediction.split}: {formatDriverName(prediction)}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                
+                {users.filter(user => user.community_count > 0).length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No community predictions have been made yet.
                   </p>
                 )}
               </div>
