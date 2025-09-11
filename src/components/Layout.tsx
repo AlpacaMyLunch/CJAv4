@@ -4,19 +4,18 @@ import { Menu, X, LogOut, Palette, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme, themeDisplayNames, type Theme } from '@/hooks/useTheme'
+import { Logo } from '@/components/Logo'
 
 const navigationItems = [
   { name: 'Home', href: '/' },
   { name: 'Nostradouglas', href: '/nostradouglas' },
-  { name: 'Fantasy SRA', href: '/fantasy-sra' },
-  { name: 'Pick Deez', href: '/pick-deez' },
-  { name: 'Predictions', href: '/community' },
+  { name: 'Predictions', href: '/community', adminOnly: true },
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false)
-  const { user, signOut } = useAuth()
+  const { user, signOut, isAdmin, signInWithDiscord } = useAuth()
   const { theme, setTheme } = useTheme()
   const location = useLocation()
   const themeDropdownRef = useRef<HTMLDivElement>(null)
@@ -45,14 +44,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <Link to="/" className="text-xl font-semibold text-foreground">
-                Coach Jeffries Academy
+              <Link to="/" className="flex items-center space-x-2">
+                <Logo />
+                <span className="text-xl font-semibold text-foreground hidden sm:block">
+                  Coach Jeffries Academy
+                </span>
               </Link>
             </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-1">
-              {navigationItems.map((item) => (
+              {navigationItems
+                .filter(item => !item.adminOnly || isAdmin)
+                .map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
@@ -132,12 +136,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 </>
               ) : (
-                <Link
-                  to="/login"
+                <button
+                  onClick={() => signInWithDiscord(window.location.href)}
                   className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors"
                 >
                   Sign In
-                </Link>
+                </button>
               )}
             </div>
 
@@ -168,7 +172,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className="md:hidden border-t border-border"
             >
               <div className="px-2 pt-2 pb-3 space-y-1 bg-background">
-                {navigationItems.map((item) => (
+                {navigationItems
+                  .filter(item => !item.adminOnly || isAdmin)
+                  .map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
@@ -230,13 +236,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       </button>
                     </>
                   ) : (
-                    <Link
-                      to="/login"
-                      className="block px-3 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                    <button
+                      onClick={() => {
+                        signInWithDiscord(window.location.href)
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="block w-full px-3 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors text-center"
                     >
                       Sign In
-                    </Link>
+                    </button>
                   )}
                 </div>
               </div>

@@ -25,10 +25,8 @@ export function ThemeProvider({
     
     // Remove all theme classes
     root.classList.remove(
-      'light', 'dark', 'midnight', 'ocean', 'forest', 'sunset', 'rose',
-      'cyberpunk', 'monochrome', 'lavender', 'emerald', 'amber', 'crimson',
-      'slate', 'indigo', 'teal', 'bronze', 'west-ham', 'arctic', 'volcano',
-      'galaxy', 'mint'
+       'dark',  'ocean', 
+      'slate'
     )
     
     // Add current theme class (dark theme doesn't need a class as it's the default)
@@ -41,7 +39,7 @@ export function ThemeProvider({
   }, [theme])
 
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark')
+    setTheme(prevTheme => prevTheme === 'dark' ? 'ocean' : 'dark')
   }
 
   const value = {

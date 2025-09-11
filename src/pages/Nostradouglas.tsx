@@ -85,7 +85,7 @@ function SortableTrackCard({ track, position, onRemove }: {
               <div className="text-xl">🏁</div>
               <div className="flex-1">
                 <h3 className="font-medium group-hover:text-primary transition-colors duration-200">{track.name}</h3>
-                <p className="text-sm text-muted-foreground group-hover:text-foreground/70 transition-colors duration-200">Racing Circuit</p>
+                {/* <p className="text-sm text-muted-foreground group-hover:text-foreground/70 transition-colors duration-200">Racing Circuit</p> */}
               </div>
             </div>
 
@@ -155,7 +155,7 @@ function TrackSelectionCard({ track, onSelect, isSelected }: {
             <div className="text-2xl">🏁</div>
             <div>
               <h4 className="font-medium text-sm group-hover:text-primary transition-colors duration-200">{track.name}</h4>
-              <p className="text-xs text-muted-foreground group-hover:text-foreground/70 transition-colors duration-200">Racing Circuit</p>
+              {/* <p className="text-xs text-muted-foreground group-hover:text-foreground/70 transition-colors duration-200">Racing Circuit</p> */}
             </div>
           </div>
           {isSelected && (
@@ -172,7 +172,7 @@ function TrackSelectionCard({ track, onSelect, isSelected }: {
 }
 
 export function Nostradouglas() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, signInWithDiscord } = useAuth()
   const { season, tracks, loading: seasonLoading, error: seasonError } = useSeasonData()
   const { predictions, error: predictionsError, savePredictions } = usePredictions(season?.id || null)
   const { addToast } = useToast()
@@ -201,8 +201,8 @@ export function Nostradouglas() {
       }).sort((a, b) => a.position - b.position)
       
       setSelectedTracks(predictionTracks)
-    } else if (predictions.length === 0 && tracks.length > 0 && user && season?.id) {
-      // Clear selected tracks if we have no predictions but have a user and season
+    } else if (predictions.length === 0) {
+      // Clear selected tracks if we have no predictions (covers both signed out and signed in with no predictions)
       setSelectedTracks([])
     }
   }, [predictions, tracks, user, season?.id])
@@ -342,17 +342,33 @@ export function Nostradouglas() {
           
           {!isDeadlinePassed ? (
             <div className="text-right">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="h-4 w-4" />
-                <span>{daysLeft}d {hoursLeft}h remaining</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Deadline: {deadline.toLocaleDateString()}
-              </p>
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Clock className="h-4 w-4" />
+                    <span>{daysLeft}d {hoursLeft}h remaining</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Deadline: {deadline.toLocaleDateString()}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Clock className="h-4 w-4" />
+                    <span>{daysLeft}d {hoursLeft}h remaining</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <button onClick={() => signInWithDiscord(window.location.href)} className="text-primary underline hover:text-primary/80">
+                      Sign in
+                    </button> to make predictions
+                  </p>
+                </>
+              )}
             </div>
           ) : (
-            <div className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-              Predictions Locked
+            <div className="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 rounded-full text-sm font-medium">
+              {isAuthenticated ? 'Predictions Locked' : 'Sign in to View Predictions'}
             </div>
           )}
         </div>
@@ -375,21 +391,21 @@ export function Nostradouglas() {
                   `Click to add tracks to your prediction`
                 ) : (
                   <>
-                    View the tracks. <Link to="/login" className="text-primary underline">Sign in</Link> to make predictions.
+                    View the tracks. <button onClick={() => signInWithDiscord(window.location.href)} className="text-primary underline hover:text-primary/80">Sign in</button> to make predictions.
                   </>
                 )}
-                {isAuthenticated && (
-                  <div className="mt-2">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedTracks.length === 8 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                        : 'bg-primary/10 text-primary'
-                    }`}>
-                      {selectedTracks.length}/8 tracks selected
-                    </span>
-                  </div>
-                )}
               </CardDescription>
+              {isAuthenticated && (
+                <div className="mt-2">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedTracks.length === 8 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                      : 'bg-primary/10 text-primary'
+                  }`}>
+                    {selectedTracks.length}/8 tracks selected
+                  </span>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="max-h-96 overflow-y-auto space-y-2">
               {tracks.map((track) => {

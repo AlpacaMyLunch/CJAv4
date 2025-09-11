@@ -19,13 +19,16 @@ export function useSeasonData() {
           .select('*')
           .order('season_number', { ascending: false })
           .limit(1)
-          .single()
 
         if (seasonError) {
           throw new Error(`Failed to fetch season: ${seasonError.message}`)
         }
 
-        setSeason(seasonData)
+        if (!seasonData || seasonData.length === 0) {
+          throw new Error('No season found')
+        }
+
+        setSeason(seasonData[0])
 
         // Then fetch all tracks
         const { data: tracksData, error: tracksError } = await supabase

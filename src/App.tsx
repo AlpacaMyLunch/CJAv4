@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './components/ThemeProvider'
 import { ToastProvider } from './hooks/useToast'
 import { Layout } from './components/Layout'
+import { AdminGuard } from './components/AdminGuard'
 import { LoginPage } from './pages/LoginPage'
 import { LandingPage } from './pages/LandingPage'
 import { Nostradouglas } from './pages/Nostradouglas'
@@ -24,7 +25,14 @@ function App() {
                     <Route path="/nostradouglas" element={<Nostradouglas />} />
                     <Route path="/fantasy-sra" element={<Placeholder title="Fantasy SRA" />} />
                     <Route path="/pick-deez" element={<Placeholder title="Pick Deez" />} />
-                    <Route path="/community" element={<CommunityPredictions />} />
+                    <Route 
+                      path="/community" 
+                      element={
+                        <AdminGuard>
+                          <CommunityPredictions />
+                        </AdminGuard>
+                      } 
+                    />
                   </Routes>
                 </Layout>
               }

@@ -4,15 +4,13 @@ import { Trophy, Calendar, Target, Medal, ChevronDown, ChevronUp, CheckCircle2, 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { usePastPredictions, type PastPredictionWithResult, type WeeklyScore } from '@/hooks/usePastPredictions'
+import { formatDriverName } from '@/utils/formatting'  
 
 interface PastPicksProps {
   seasonId: string | null
 }
 
-function formatDriverName(driver: PastPredictionWithResult['predicted_driver']) {
-  const name = `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || driver.short_name
-  return driver.driver_number ? `#${driver.driver_number} ${name}` : name
-}
+
 
 function getPositionColor(position?: number) {
   if (!position) return 'text-muted-foreground'

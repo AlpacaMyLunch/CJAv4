@@ -7,6 +7,29 @@ export interface AuthState {
   session: Session | null
   loading: boolean
   error: AuthError | null
+  isAdmin: boolean
+}
+
+const checkIsAdmin = async (user: User | null): Promise<boolean> => {
+  if (!user?.id) return false
+  
+  try {
+    const { data, error } = await supabase
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
+    
+    if (error) {
+      console.error('Admin check error:', error)
+      return false
+    }
+    
+    return !!data
+  } catch (error) {
+    console.error('Admin check exception:', error)
+    return false
+  }
 }
 
 export function useAuth() {
@@ -14,7 +37,8 @@ export function useAuth() {
     user: null,
     session: null,
     loading: true,
-    error: null
+    error: null,
+    isAdmin: false
   })
 
   useEffect(() => {
@@ -29,12 +53,32 @@ export function useAuth() {
           return
         }
         
+        const user = session?.user ?? null
+        
+        // Set initial state with user, then check admin status
         setAuthState({
-          user: session?.user ?? null,
+          user,
           session,
           loading: false,
-          error: null
+          error: null,
+          isAdmin: false
         })
+        
+        // Check admin status if user exists
+        if (user) {
+          // Temporarily disable admin check to fix loading issue
+          // TODO: Re-enable when admin table is set up
+          // try {
+          //   const isAdmin = await checkIsAdmin(user)
+          //   setAuthState(prev => ({
+          //     ...prev,
+          //     isAdmin
+          //   }))
+          // } catch (error) {
+          //   console.error('Admin check failed:', error)
+          //   // Keep isAdmin as false if check fails
+          // }
+        }
       } catch (error) {
         console.error('Initial session catch:', error)
         setAuthState(prev => ({ 
@@ -50,23 +94,43 @@ export function useAuth() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        const user = session?.user ?? null
+        
+        // Set initial state with user, then check admin status
         setAuthState({
-          user: session?.user ?? null,
+          user,
           session,
           loading: false,
-          error: null
+          error: null,
+          isAdmin: false
         })
+        
+        // Check admin status if user exists
+        if (user) {
+          // Temporarily disable admin check to fix loading issue
+          // TODO: Re-enable when admin table is set up
+          // try {
+          //   const isAdmin = await checkIsAdmin(user)
+          //   setAuthState(prev => ({
+          //     ...prev,
+          //     isAdmin
+          //   }))
+          // } catch (error) {
+          //   console.error('Admin check failed:', error)
+          //   // Keep isAdmin as false if check fails
+          // }
+        }
       }
     )
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const signInWithDiscord = async () => {
+  const signInWithDiscord = async (redirectTo?: string) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${window.location.origin}/`
+        redirectTo: redirectTo || `${window.location.origin}/`
       }
     })
     
@@ -87,6 +151,7 @@ export function useAuth() {
     ...authState,
     signInWithDiscord,
     signOut,
-    isAuthenticated: !!authState.user
+    isAuthenticated: !!authState.user,
+    isAdmin: authState.isAdmin
   }
 }

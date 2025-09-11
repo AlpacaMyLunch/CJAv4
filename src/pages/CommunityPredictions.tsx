@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import { PastPicks } from '@/components/PastPicks'
 import { Leaderboard } from '@/components/Leaderboard'
 import { Button } from '@/components/ui/button'
+import { formatDriverName } from '@/utils/formatting'
 
 const DIVISIONS = [1, 2, 3, 4, 5, 6]
 const SPLITS = ['Gold', 'Silver'] as const
@@ -119,10 +120,7 @@ export function CommunityPredictions() {
     return prediction?.driver_id || ''
   }
 
-  const formatDriverName = (driver: any) => {
-    const name = `${driver.first_name || ''} ${driver.last_name || ''}`.trim()
-    return driver.driver_number ? `#${driver.driver_number} ${name}` : name
-  }
+
 
   if (loading) {
     return (

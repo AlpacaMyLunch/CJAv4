@@ -53,24 +53,35 @@ Sim racing league platform with predictions and fantasy features.
 
 
 
-
-
-# Sim Racing Database Schema - Technical Reference for Claude Code
+# Sim Racing Database Schema - Complete Technical Reference
 
 ## Database Overview
-PostgreSQL database managing sim racing league with 8 tables + 3 views. Multi-division racing with comprehensive RLS security. Current focus: Season 16 with 8-week schedule.
+PostgreSQL database for sim racing league management with seasons, drivers, tracks, schedules, race results, and user predictions. Supports multi-division racing with comprehensive Row Level Security (RLS). Currently managing Season 16 with 8-week schedule across 6 divisions and 2 splits.
 
-## Quick Reference
-- **Primary Tables**: seasons, drivers, tracks, schedule, race_results, predictions
-- **Legacy**: nostradouglas (old prediction system)  
-- **Lookup**: track_name_lookup (name normalization)
-- **Views**: Public access layers
-- **External**: auth.users (Supabase Auth)
+## Database Objects Summary
+- **8 Tables**: Core data storage with full RLS
+- **3 Views**: Public data access layers
+- **External**: auth.users (Supabase Auth integration)
 
-## Complete Table Schemas
+## Architecture & Data Flow
+
+```
+Users (auth.users)
+├── predictions (race winner predictions)
+├── nostradouglas (schedule predictions)
+└── 
+    seasons → schedule → race_results
+              ↓           ↑
+           tracks ←─ track_name_lookup
+              ↑
+           drivers
+```
+
+## Complete Table Specifications
 
 ### `seasons` - Season Management
-Core season definitions (1 record per actual season).
+Core season definitions with one record per actual racing season.
+
 ```sql
 CREATE TABLE seasons (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,22 +92,32 @@ CREATE TABLE seasons (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
-**Security**: Read-only authenticated  
-**Current**: Season 16 "GT3 Team Series", starts 2025-11-05
 
-### `tracks` - Circuit Definitions
-Racing track registry with canonical names.
+**Access Control**: Read-only for authenticated users  
+**Current Data**: Season 16 "GT3 Team Series", prediction deadline 2025-11-01, starts 2025-11-05  
+**Business Logic**: Season number must be unique, prediction deadline enforced
+
+---
+
+### `tracks` - Racing Circuit Registry
+Master list of available racing tracks/circuits.
+
 ```sql
 CREATE TABLE tracks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL UNIQUE
 );
 ```
-**Security**: Public read  
-**Count**: 25 tracks (Monza, Spa-Francochamps, Nürburgring, etc.)
 
-### `track_name_lookup` - Name Normalization
-Maps track name variations to canonical forms.
+**Access Control**: Public read access  
+**Current Data**: 25 tracks including Monza, Spa-Francochamps, Nürburgring, Silverstone, Barcelona, Paul Ricard, Laguna Seca, etc.  
+**Business Logic**: Track names must be unique and canonical
+
+---
+
+### `track_name_lookup` - Name Normalization System
+Maps track name variations to canonical track names for data consistency.
+
 ```sql
 CREATE TABLE track_name_lookup (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -105,15 +126,20 @@ CREATE TABLE track_name_lookup (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
-**Security**: Read-only all users  
-**Examples**: "Nurburgring" → "Nürburgring", "COTA" → "Circuit of the Americas"
 
-### `drivers` - Driver Registry
-Driver profiles and current division/split assignments.
+**Access Control**: Read-only for all users (public + authenticated)  
+**Purpose**: Handles variations like "Nurburgring" → "Nürburgring", "COTA" → "Circuit of the Americas"  
+**Usage**: Essential for parsing external data sources with inconsistent track naming
+
+---
+
+### `drivers` - Driver Registry & Profiles
+Complete driver information with current division/split assignments.
+
 ```sql
 CREATE TABLE drivers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    steam_id_sha256 VARCHAR(64) NOT NULL UNIQUE,  -- Identity key
+    steam_id_sha256 VARCHAR(64) NOT NULL UNIQUE,  -- Identity source of truth
     discord_id VARCHAR(32) UNIQUE,
     discord_username VARCHAR(255),
     first_name VARCHAR(100),
@@ -121,17 +147,22 @@ CREATE TABLE drivers (
     short_name VARCHAR(50) NOT NULL,
     division INTEGER NOT NULL CHECK (division >= 1 AND division <= 6),
     division_split VARCHAR(10) NOT NULL CHECK (division_split IN ('Gold', 'Silver')),
-    driver_number INTEGER UNIQUE,
+    driver_number INTEGER UNIQUE,  -- Racing number
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
-**Security**: Read-only authenticated  
-**Identity**: steam_id_sha256 is source of truth  
-**Current**: 24 drivers across 6 divisions × 2 splits
 
-### `schedule` - Race Calendar
-Links seasons to tracks by race week (8 weeks per season).
+**Access Control**: Read-only for authenticated users  
+**Identity Management**: steam_id_sha256 is the source of truth for all driver operations  
+**Current Data**: 24 active drivers distributed across 6 divisions × 2 splits  
+**Business Logic**: Driver numbers must be unique, divisions 1-6, splits Gold/Silver only
+
+---
+
+### `schedule` - Race Calendar Management
+Links seasons to tracks by race week, defining the racing calendar.
+
 ```sql
 CREATE TABLE schedule (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -140,15 +171,27 @@ CREATE TABLE schedule (
     track_id UUID NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
     race_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(season_id, week),
-    UNIQUE(season_id, track_id)
+    UNIQUE(season_id, week),      -- One track per week per season
+    UNIQUE(season_id, track_id)   -- Each track appears once per season
 );
 ```
-**Security**: Read-only authenticated  
-**Current**: Season 16 schedule: Paul Ricard → Nürburgring → Barcelona → Donington → Hungaroring → Laguna Seca → Kyalami → Monza
 
-### `race_results` - Race Outcomes
-Actual race results preserving historical division/split assignments.
+**Access Control**: Read-only for authenticated users  
+**Current Schedule (Season 16)**:
+1. Week 1: Paul Ricard (Nov 5)
+2. Week 2: Nürburgring (Nov 12)  
+3. Week 3: Barcelona (Nov 19)
+4. Week 4: Donington Park (Nov 26)
+5. Week 5: Hungaroring (Dec 3)
+6. Week 6: Laguna Seca (Dec 10)
+7. Week 7: Kyalami (Dec 17)
+8. Week 8: Monza (Dec 24)
+
+---
+
+### `race_results` - Actual Race Outcomes
+Stores actual race results with historical division/split preservation.
+
 ```sql
 CREATE TABLE race_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -159,15 +202,20 @@ CREATE TABLE race_results (
     finish_position INTEGER NOT NULL CHECK (finish_position >= 1),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(schedule_id, division, split, driver_id),
-    UNIQUE(schedule_id, division, split, finish_position)
+    UNIQUE(schedule_id, division, split, driver_id),        -- One result per driver per race
+    UNIQUE(schedule_id, division, split, finish_position)   -- One driver per position per race
 );
 ```
-**Security**: Read-only authenticated  
-**Key Rule**: Division/split preserved from race time, only finish_position updates allowed
 
-### `predictions` - User Race Predictions
-Users predict race winners by division/split.
+**Access Control**: Read-only for authenticated users  
+**Critical Rule**: Division/split values are preserved from race time and never updated, only finish_position can be modified  
+**Business Logic**: Maintains historical accuracy even if drivers change divisions mid-season
+
+---
+
+### `predictions` - Race Winner Predictions
+Users predict race winners by division and split for each scheduled race.
+
 ```sql
 CREATE TABLE predictions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -178,13 +226,19 @@ CREATE TABLE predictions (
     driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, schedule_id, division, split)  -- One prediction per race per division/split
+    UNIQUE(user_id, schedule_id, division, split)  -- One prediction per user per race per division/split
 );
 ```
-**Security**: Users own records only (auth.uid() = user_id)
+
+**Access Control**: Users can only read/write their own predictions (auth.uid() = user_id)  
+**Purpose**: Users predict which driver will win each race in each division/split combination  
+**Business Logic**: One prediction per user per race per division/split, can be updated until prediction deadline
+
+---
 
 ### `nostradouglas` - Schedule Predictions
-Users predict the race schedule order for upcoming seasons.
+Users predict the upcoming season's race schedule before it's officially announced.
+
 ```sql
 CREATE TABLE nostradouglas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -194,17 +248,20 @@ CREATE TABLE nostradouglas (
     position INTEGER NOT NULL CHECK (position >= 1 AND position <= 8),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, season_id, position),  -- One user per position per season
-    UNIQUE(user_id, season_id, track_id)   -- One prediction per track per user
+    UNIQUE(user_id, season_id, position),  -- One track per position per user per season
+    UNIQUE(user_id, season_id, track_id)   -- Each track appears once per user per season
 );
 ```
-**Security**: Users own records only  
-**Purpose**: Users predict which tracks will be in weeks 1-8 of the season schedule
 
-## Views
+**Access Control**: Users can only read/write their own predictions (auth.uid() = user_id)  
+**Purpose**: Users predict which tracks will be selected for weeks 1-8 of the season schedule  
+**Business Logic**: Each user predicts 8 tracks in order (positions 1-8), no duplicates allowed
 
-### `drivers_public` - Public Driver Info
-Safe subset of driver data for public display.
+## Public Views
+
+### `drivers_public` - Safe Driver Information
+Public subset of driver data without sensitive information.
+
 ```sql
 CREATE VIEW drivers_public AS
 SELECT 
@@ -216,10 +273,15 @@ SELECT
     division_split
 FROM drivers;
 ```
-**Security**: Public access
+
+**Access**: Public (anonymous + authenticated)  
+**Usage**: Safe for public leaderboards, driver listings
+
+---
 
 ### `race_results_public` - Enhanced Race Results
-Complete race results with driver/track names and split positioning.
+Complete race results with driver names, track info, and split-specific positioning.
+
 ```sql
 CREATE VIEW race_results_public AS
 SELECT 
@@ -236,11 +298,11 @@ SELECT
     d.last_name,
     d.short_name,
     d.driver_number,
-    rr.finish_position,  -- Overall race position
+    rr.finish_position,  -- Overall race finishing position
     ROW_NUMBER() OVER (
         PARTITION BY rr.schedule_id, rr.division, rr.split 
         ORDER BY rr.finish_position
-    ) AS split_position,  -- Position within division/split
+    ) AS split_position,  -- Position within specific division/split
     rr.created_at,
     rr.updated_at
 FROM race_results rr
@@ -249,11 +311,16 @@ JOIN schedule s ON s.id = rr.schedule_id
 JOIN tracks t ON t.id = s.track_id
 ORDER BY s.week, rr.division, rr.split, rr.finish_position;
 ```
-**Security**: Public access  
-**Key Feature**: `split_position` ranks drivers within their division/split
 
-### `user_profiles_public` - User Display Names
-Safe user profile info from Supabase Auth.
+**Access**: Public  
+**Key Feature**: `split_position` shows ranking within division/split (e.g., 1st place Division 1 Silver finisher)  
+**Usage**: Public race results, championship standings
+
+---
+
+### `user_profiles_public` - User Display Information
+Safe user profile data from Supabase Auth for public display.
+
 ```sql
 CREATE VIEW user_profiles_public AS
 SELECT 
@@ -266,116 +333,138 @@ SELECT
     created_at
 FROM auth.users;
 ```
-**Security**: Public access
 
-## Security Model (Row Level Security)
+**Access**: Public  
+**Usage**: User identification in leaderboards, prediction displays
 
-### Write Access (User Data Only)
+## Security & Access Control (RLS Policies)
+
+### Write Permissions
+Only user-owned prediction data can be modified:
+
 ```sql
--- Users manage own predictions
-auth.uid() = user_id
-```
-Tables: `predictions`, `nostradouglas`
+-- Users manage their own race winner predictions
+CREATE POLICY predictions_user_access ON predictions
+USING (auth.uid() = user_id);
 
-### Read Access Levels
-- **Public**: `tracks`, `drivers_public`, `race_results_public`, `user_profiles_public`, `track_name_lookup`
-- **Authenticated**: `seasons`, `schedule`, `race_results`, `drivers`  
-- **User-Specific**: `predictions`, `nostradouglas` (own records)
+-- Users manage their own schedule predictions  
+CREATE POLICY nostradouglas_user_access ON nostradouglas
+USING (auth.uid() = user_id);
+```
+
+### Read Permissions by Access Level
+
+**Public Access (Anonymous + Authenticated)**:
+- `tracks` - All racing circuits
+- `drivers_public` - Safe driver info
+- `race_results_public` - Complete race results
+- `user_profiles_public` - User display names
+- `track_name_lookup` - Track name variations
+
+**Authenticated Only**:
+- `seasons` - Season definitions
+- `schedule` - Race calendar
+- `race_results` - Raw race results
+- `drivers` - Complete driver profiles
+
+**User-Specific**:
+- `predictions` - Own race winner predictions only
+- `nostradouglas` - Own schedule predictions only
 
 ### No Write Access
-Core data tables are read-only: `seasons`, `drivers`, `tracks`, `schedule`, `race_results`
+Core data tables are read-only for all users:
+- `seasons`, `drivers`, `tracks`, `schedule`, `race_results`, `track_name_lookup`
 
-## Data Relationships
+## Application Development Patterns
 
-### Primary Flow
-```
-Season → Schedule → Race Results
-         ↓           ↑
-      Tracks ← Track Lookup
-```
-
-### User Flow  
-```
-auth.users → Predictions → Drivers
-           → Nostradouglas (legacy)
-```
-
-### Driver Identity
-```
-steam_id_sha256 (source of truth) → All driver operations
-```
-
-## Application Patterns
-
-### Driver Management
+### Driver Identity Management
 ```python
-# Upsert using steam_id_sha256 as identity
-driver_data = {
-    'steam_id_sha256': '...',
-    'division': int(division),
-    'driver_number': int(number) if number else None
-}
-supabase.table('drivers').upsert(driver_data).execute()
+# Always use steam_id_sha256 as the source of truth
+def upsert_driver(driver_data):
+    # steam_id_sha256 is required and immutable
+    # Other fields can be updated
+    return supabase.table('drivers').upsert(driver_data).execute()
 ```
 
-### Track Name Normalization  
+### Track Name Normalization
 ```python
-def normalize_track_name(track_name):
+def normalize_track_name(input_name):
     # 1. Try exact match in tracks table
-    # 2. Try lookup in track_name_lookup table
-    # 3. Return original if no match
+    # 2. Check track_name_lookup for variations
+    # 3. Return original if no match found
+    # Essential for parsing external race data
 ```
 
 ### Race Results Processing
 ```python
-# Preserve historical division/split
-# Only update finish_position on existing records
-# Insert new records with division from HTML + current driver split
+def update_race_result(schedule_id, driver_id, new_position):
+    # NEVER update division/split on existing records
+    # Only update finish_position to preserve historical accuracy
+    # Division/split locked at race time
 ```
 
 ### User Predictions
 ```python
-# One prediction per user/race/division/split
-# Users can only manage their own predictions
+def create_prediction(user_id, schedule_id, division, split, driver_id):
+    # Enforce one prediction per user per race per division/split
+    # Users can only access their own predictions
+    # Must respect prediction deadlines
 ```
 
-## Key Constraints & Validations
+## Data Integrity & Business Rules
 
-### Data Integrity
-- **Divisions**: 1-6 range enforced
-- **Splits**: 'Gold'/'Silver' only
-- **Weeks**: 1-8 range for schedule
-- **Positions**: ≥1 for all position fields
-- **Uniqueness**: Prevents duplicate predictions/results
+### Critical Constraints
+- **Driver Identity**: steam_id_sha256 uniqueness enforced
+- **Race Results**: Historical division/split preservation
+- **Predictions**: One per user per race per division/split
+- **Schedule**: No duplicate tracks per season, 8 weeks maximum
 
-### Business Rules
-- Steam ID is driver identity source of truth
-- Historical race division/split preserved
-- Track names normalized via lookup table
-- Users isolated to own prediction data
+### Validation Rules
+- Divisions: 1-6 range only
+- Splits: 'Gold' or 'Silver' only  
+- Weeks: 1-8 range for schedule
+- Positions: Must be positive integers
+- Driver numbers: Unique across all drivers
 
-## Current Data State
-- **Season 16**: Active with 8-week schedule
-- **24 Drivers**: Distributed across divisions/splits  
-- **25 Tracks**: Major sim racing circuits
-- **Track Variants**: Normalized via lookup table
+### Cascading Operations
+- Deleting seasons → removes schedule, results, predictions
+- Deleting drivers → removes results, predictions
+- Deleting tracks → removes schedule entries
+- User deletion → removes all user predictions
+
+## Current System State
+
+### Active Data
+- **Season 16**: "GT3 Team Series" with 8-week schedule
+- **24 Drivers**: Active across 6 divisions × 2 splits
+- **25 Tracks**: Available for scheduling
+- **Complete Schedule**: Paul Ricard through Monza
+
+### Operational Status
+- Prediction system active for race winners
+- Schedule prediction system ready for future seasons
+- Race results processing capable
+- Full RLS security implemented
 
 ## Development Guidelines
 
-### For Data Modification
-- Use steam_id_sha256 for driver identity
-- Preserve race result division/split history
-- Normalize track names before DB operations
-- Validate user permissions before writes
+### For Data Operations
+1. Use steam_id_sha256 for all driver identification
+2. Preserve historical race result division/split values
+3. Normalize track names before database operations
+4. Validate user permissions before any writes
+5. Use public views for safe data access
 
 ### For Queries
-- Use public views for safe data access
-- Join through schedule for race context
-- Filter by user_id for user-specific data
-- Use split_position for division/split rankings
+1. Join through schedule table for race context
+2. Use split_position for division/split rankings
+3. Filter by user_id for user-specific data
+4. Leverage public views to avoid permission issues
 
 ### For Security
-- All user operations require authentication
-- User data isolated by user_id matching
-- Public views provide safe data exposure
-- No direct table writes for core data
+1. All user operations require authentication
+2. User data strictly isolated by user_id matching
+3. Use public views for safe data exposure
+4. Never allow direct writes to core data tables
+
+This schema supports a complete sim racing league management system with robust security, data integrity, and multiple prediction systems for enhanced user engagement.
