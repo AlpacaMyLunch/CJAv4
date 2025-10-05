@@ -214,6 +214,10 @@ export function Nostradouglas() {
   const daysLeft = Math.max(0, Math.floor(timeToDeadline / (1000 * 60 * 60 * 24)))
   const hoursLeft = Math.max(0, Math.floor((timeToDeadline % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)))
 
+  const timeToWeek1Deadline = week1Deadline ? week1Deadline.getTime() - new Date().getTime() : 0
+  const week1DaysLeft = Math.max(0, Math.floor(timeToWeek1Deadline / (1000 * 60 * 60 * 24)))
+  const week1HoursLeft = Math.max(0, Math.floor((timeToWeek1Deadline % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)))
+
   const handleTrackSelect = (track: Track) => {
     if (selectedTracks.length < 8 && !isDeadlinePassed && isAuthenticated) {
       const newPosition = selectedTracks.length + 1
@@ -405,24 +409,35 @@ export function Nostradouglas() {
           </div>
           
           {!isDeadlinePassed ? (
-            <div className="text-right">
+            <div className="text-right space-y-2">
+              {week1Deadline && !isWeek1DeadlinePassed && (
+                <div>
+                  <div className="flex items-center justify-end gap-2 text-sm font-medium text-orange-600 dark:text-orange-400">
+                    <Clock className="h-4 w-4" />
+                    <span>Week 1: {week1DaysLeft}d {week1HoursLeft}h</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Week 1 Deadline: {week1Deadline.toLocaleDateString()}
+                  </p>
+                </div>
+              )}
               {isAuthenticated ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm font-medium">
+                  <div className="flex items-center justify-end gap-2 text-sm font-medium">
                     <Clock className="h-4 w-4" />
                     <span>{daysLeft}d {hoursLeft}h remaining</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Deadline: {deadline.toLocaleDateString()}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Full Deadline: {deadline.toLocaleDateString()}
                   </p>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 text-sm font-medium">
+                  <div className="flex items-center justify-end gap-2 text-sm font-medium">
                     <Clock className="h-4 w-4" />
                     <span>{daysLeft}d {hoursLeft}h remaining</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     <button onClick={() => signInWithDiscord(window.location.href)} className="text-primary underline hover:text-primary/80">
                       Sign in
                     </button> to make predictions
