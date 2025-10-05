@@ -207,23 +207,38 @@ export function Nostradouglas() {
   }, [predictions, tracks, user, season?.id])
 
   const deadline = season ? new Date(season.prediction_deadline) : new Date()
+  const week1Deadline = season?.week_1_prediction_deadline ? new Date(season.week_1_prediction_deadline) : null
   const isDeadlinePassed = new Date() > deadline
+  const isWeek1DeadlinePassed = week1Deadline ? new Date() > week1Deadline : false
   const timeToDeadline = deadline.getTime() - new Date().getTime()
   const daysLeft = Math.max(0, Math.floor(timeToDeadline / (1000 * 60 * 60 * 24)))
   const hoursLeft = Math.max(0, Math.floor((timeToDeadline % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)))
 
   const handleTrackSelect = (track: Track) => {
     if (selectedTracks.length < 8 && !isDeadlinePassed && isAuthenticated) {
+      const newPosition = selectedTracks.length + 1
+
+      // Check if week 1 deadline has passed and this would be position 1
+      // Only allow if user already has existing predictions
+      if (isWeek1DeadlinePassed && newPosition === 1 && predictions.length === 0) {
+        addToast({
+          title: 'Week 1 Deadline Passed',
+          description: 'The deadline for week 1 predictions has passed. You can no longer submit new predictions with a week 1 selection.',
+          variant: 'destructive'
+        })
+        return
+      }
+
       const newTrack: PredictionTrack = {
         ...track,
-        position: selectedTracks.length + 1
+        position: newPosition
       }
       setSelectedTracks([...selectedTracks, newTrack])
-      
+
       // Track track selection
       trackUserAction('track_selected', {
         track_name: track.name,
-        position: selectedTracks.length + 1,
+        position: newPosition,
         total_selected: selectedTracks.length + 1
       })
     }
@@ -240,12 +255,27 @@ export function Nostradouglas() {
     if (over && active.id !== over.id && isAuthenticated) {
       const oldIndex = selectedTracks.findIndex(track => track.id === active.id)
       const newIndex = selectedTracks.findIndex(track => track.id === over.id)
-      
+
+      // Check if week 1 deadline has passed and the reorder would change position 1
+      if (isWeek1DeadlinePassed && predictions.length > 0) {
+        const currentWeek1Track = selectedTracks[0]
+        const wouldChangeWeek1 = oldIndex === 0 || newIndex === 0
+
+        if (wouldChangeWeek1 && selectedTracks[0].id !== currentWeek1Track.id) {
+          addToast({
+            title: 'Week 1 Locked',
+            description: 'The deadline for week 1 predictions has passed. You cannot change your week 1 prediction.',
+            variant: 'destructive'
+          })
+          return
+        }
+      }
+
       const newTracks = arrayMove(selectedTracks, oldIndex, newIndex).map((track, index) => ({
         ...track,
         position: index + 1
       }))
-      
+
       setSelectedTracks(newTracks)
     }
   }
@@ -253,7 +283,17 @@ export function Nostradouglas() {
   const removeTrack = (trackId: string) => {
     if (!isDeadlinePassed && isAuthenticated) {
       const trackToRemove = selectedTracks.find(track => track.id === trackId)
-      
+
+      // Check if week 1 deadline has passed and trying to remove position 1
+      if (isWeek1DeadlinePassed && predictions.length > 0 && trackToRemove?.position === 1) {
+        addToast({
+          title: 'Week 1 Locked',
+          description: 'The deadline for week 1 predictions has passed. You cannot remove your week 1 prediction.',
+          variant: 'destructive'
+        })
+        return
+      }
+
       // Track track removal
       if (trackToRemove) {
         trackUserAction('track_removed', {
@@ -262,7 +302,7 @@ export function Nostradouglas() {
           total_selected: selectedTracks.length - 1
         })
       }
-      
+
       const newTracks = selectedTracks
         .filter(track => track.id !== trackId)
         .map((track, index) => ({

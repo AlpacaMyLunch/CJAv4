@@ -21,6 +21,7 @@ export type Season = {
   season_number: number
   name: string | null
   prediction_deadline: string
+  week_1_prediction_deadline: string | null
   starts_at: string | null
   created_at: string
 }
