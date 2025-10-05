@@ -262,9 +262,6 @@ export function Nostradouglas() {
   // Check if user has a saved week 1 prediction in the database (and hasn't reset)
   const hasSavedWeek1Prediction = !hasBeenReset && predictions.some(p => p.position === 1)
   const shouldShowWeek1Placeholder = isWeek1DeadlinePassed && !hasSavedWeek1Prediction && selectedTracks.length > 0
-  const displayTracks = shouldShowWeek1Placeholder
-    ? [{ id: 'week1-placeholder', name: 'Week 1 - Locked', position: 1 } as PredictionTrack, ...selectedTracks]
-    : selectedTracks
 
   const handleTrackSelect = (track: Track) => {
     // Calculate max tracks: 8 normally, or 7 if week 1 deadline passed and no saved week 1 prediction
