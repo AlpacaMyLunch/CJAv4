@@ -53,7 +53,7 @@ export function usePredictions(seasonId: string | null) {
       // Fetch season to check week 1 deadline
       const { data: seasonData, error: seasonError } = await supabase
         .from('seasons')
-        .select('week_1_prediction_deadline')
+        .select('*')
         .eq('id', seasonId)
         .single()
 
