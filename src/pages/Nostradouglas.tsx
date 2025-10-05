@@ -39,10 +39,41 @@ interface PredictionTrack extends Track {
   position: number
 }
 
-function SortableTrackCard({ track, position, onRemove }: { 
-  track: Track, 
+function PlaceholderTrackCard() {
+  return (
+    <Card className="group transition-all duration-200 bg-muted/30 border-dashed">
+      <CardContent className="p-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-muted text-muted-foreground rounded-full flex items-center justify-center text-sm font-medium">
+              1
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3 flex-1">
+            <div className="text-xl opacity-50">🏁</div>
+            <div className="flex-1">
+              <h3 className="font-medium text-muted-foreground">Week 1 - Locked</h3>
+              <p className="text-xs text-muted-foreground">Deadline has passed</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <div className="flex-shrink-0 text-muted-foreground text-xs font-medium">
+              Locked
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function SortableTrackCard({ track, position, onRemove, isLocked }: {
+  track: Track,
   position: number,
-  onRemove?: (trackId: string) => void
+  onRemove?: (trackId: string) => void,
+  isLocked?: boolean
 }) {
   const { isAuthenticated } = useAuth()
   const {
@@ -51,7 +82,7 @@ function SortableTrackCard({ track, position, onRemove }: {
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: track.id })
+  } = useSortable({ id: track.id, disabled: isLocked })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -63,16 +94,18 @@ function SortableTrackCard({ track, position, onRemove }: {
       ref={setNodeRef}
       style={style}
       layout
-      className={isAuthenticated ? "touch-none" : ""}
+      className={isAuthenticated && !isLocked ? "touch-none" : ""}
     >
       <Card className={`group transition-all duration-200 ${
-        isAuthenticated ? 'hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5' : ''
+        isLocked ? 'bg-muted/50 opacity-90' : ''
+      } ${
+        isAuthenticated && !isLocked ? 'hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5' : ''
       }`}>
         <CardContent className="p-4">
-          <div 
+          <div
             className="flex items-center space-x-4"
-            {...(isAuthenticated ? attributes : {})}
-            {...(isAuthenticated ? listeners : {})}
+            {...(isAuthenticated && !isLocked ? attributes : {})}
+            {...(isAuthenticated && !isLocked ? listeners : {})}
           >
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium group-hover:bg-accent transition-colors duration-200">
@@ -89,7 +122,7 @@ function SortableTrackCard({ track, position, onRemove }: {
             </div>
 
             <div className="flex items-center space-x-2" style={{ pointerEvents: 'none' }}>
-              {isAuthenticated && onRemove && (
+              {isAuthenticated && onRemove && !isLocked && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -109,8 +142,8 @@ function SortableTrackCard({ track, position, onRemove }: {
                   <X className="w-3 h-3" />
                 </button>
               )}
-              
-              {isAuthenticated && (
+
+              {isAuthenticated && !isLocked && (
                 <div className="flex-shrink-0 text-muted-foreground cursor-move" style={{ pointerEvents: 'auto' }} title="Drag to reorder">
                   <svg width="20" height="20" viewBox="0 0 20 20" className="fill-current">
                     <circle cx="5" cy="7" r="1" />
@@ -120,6 +153,12 @@ function SortableTrackCard({ track, position, onRemove }: {
                     <circle cx="15" cy="10" r="1" />
                     <circle cx="15" cy="13" r="1" />
                   </svg>
+                </div>
+              )}
+
+              {isLocked && (
+                <div className="flex-shrink-0 text-muted-foreground text-xs font-medium">
+                  Locked
                 </div>
               )}
             </div>
@@ -179,6 +218,7 @@ export function Nostradouglas() {
   const [selectedTracks, setSelectedTracks] = useState<PredictionTrack[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [hasBeenReset, setHasBeenReset] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -218,20 +258,22 @@ export function Nostradouglas() {
   const week1DaysLeft = Math.max(0, Math.floor(timeToWeek1Deadline / (1000 * 60 * 60 * 24)))
   const week1HoursLeft = Math.max(0, Math.floor((timeToWeek1Deadline % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)))
 
-  const handleTrackSelect = (track: Track) => {
-    if (selectedTracks.length < 8 && !isDeadlinePassed && isAuthenticated) {
-      const newPosition = selectedTracks.length + 1
+  // Create placeholder for week 1 if deadline passed and user has no saved predictions in database
+  // Check if user has a saved week 1 prediction in the database (and hasn't reset)
+  const hasSavedWeek1Prediction = !hasBeenReset && predictions.some(p => p.position === 1)
+  const shouldShowWeek1Placeholder = isWeek1DeadlinePassed && !hasSavedWeek1Prediction && selectedTracks.length > 0
+  const displayTracks = shouldShowWeek1Placeholder
+    ? [{ id: 'week1-placeholder', name: 'Week 1 - Locked', position: 1 } as PredictionTrack, ...selectedTracks]
+    : selectedTracks
 
-      // Check if week 1 deadline has passed and this would be position 1
-      // Only allow if user already has existing predictions
-      if (isWeek1DeadlinePassed && newPosition === 1 && predictions.length === 0) {
-        addToast({
-          title: 'Week 1 Deadline Passed',
-          description: 'The deadline for week 1 predictions has passed. You can no longer submit new predictions with a week 1 selection.',
-          variant: 'destructive'
-        })
-        return
-      }
+  const handleTrackSelect = (track: Track) => {
+    // Calculate max tracks: 8 normally, or 7 if week 1 deadline passed and no saved week 1 prediction
+    const maxTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+
+    if (selectedTracks.length < maxTracks && !isDeadlinePassed && isAuthenticated) {
+      // If week 1 deadline has passed and user has no saved week 1 prediction, start at position 2
+      const startPosition = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 2 : 1
+      const newPosition = startPosition + selectedTracks.length
 
       const newTrack: PredictionTrack = {
         ...track,
@@ -260,12 +302,10 @@ export function Nostradouglas() {
       const oldIndex = selectedTracks.findIndex(track => track.id === active.id)
       const newIndex = selectedTracks.findIndex(track => track.id === over.id)
 
-      // Check if week 1 deadline has passed and the reorder would change position 1
-      if (isWeek1DeadlinePassed && predictions.length > 0) {
-        const currentWeek1Track = selectedTracks[0]
-        const wouldChangeWeek1 = oldIndex === 0 || newIndex === 0
-
-        if (wouldChangeWeek1 && selectedTracks[0].id !== currentWeek1Track.id) {
+      // Check if week 1 deadline has passed and the reorder would affect position 1
+      if (isWeek1DeadlinePassed && hasSavedWeek1Prediction) {
+        // Prevent any drag that involves index 0 (position 1)
+        if (oldIndex === 0 || newIndex === 0) {
           addToast({
             title: 'Week 1 Locked',
             description: 'The deadline for week 1 predictions has passed. You cannot change your week 1 prediction.',
@@ -289,7 +329,7 @@ export function Nostradouglas() {
       const trackToRemove = selectedTracks.find(track => track.id === trackId)
 
       // Check if week 1 deadline has passed and trying to remove position 1
-      if (isWeek1DeadlinePassed && predictions.length > 0 && trackToRemove?.position === 1) {
+      if (isWeek1DeadlinePassed && hasSavedWeek1Prediction && trackToRemove?.position === 1) {
         addToast({
           title: 'Week 1 Locked',
           description: 'The deadline for week 1 predictions has passed. You cannot remove your week 1 prediction.',
@@ -321,8 +361,9 @@ export function Nostradouglas() {
     if (!isDeadlinePassed && isAuthenticated) {
       // Track prediction reset
       trackPrediction('clear', { track_count: selectedTracks.length })
-      
+
       setSelectedTracks([])
+      setHasBeenReset(true)
     }
   }
 
@@ -335,11 +376,12 @@ export function Nostradouglas() {
       })
       return
     }
-    
-    if (selectedTracks.length !== 8) {
+
+    const requiredTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+    if (selectedTracks.length !== requiredTracks) {
       addToast({
         title: 'Incomplete Selection',
-        description: 'Please select exactly 8 tracks before saving.',
+        description: `Please select exactly ${requiredTracks} tracks before saving.`,
         variant: 'destructive'
       })
       return
@@ -353,10 +395,13 @@ export function Nostradouglas() {
       }))
       
       await savePredictions(trackPredictions)
-      
+
+      // Reset the hasBeenReset flag since we've now saved
+      setHasBeenReset(false)
+
       // Track prediction save
       trackPrediction('save', { track_count: selectedTracks.length })
-      
+
       addToast({
         title: 'Success!',
         description: 'Your prediction has been saved successfully.',
@@ -410,15 +455,23 @@ export function Nostradouglas() {
           
           {!isDeadlinePassed ? (
             <div className="text-right space-y-2">
-              {week1Deadline && !isWeek1DeadlinePassed && (
+              {week1Deadline && (
                 <div>
-                  <div className="flex items-center justify-end gap-2 text-sm font-medium text-orange-600 dark:text-orange-400">
-                    <Clock className="h-4 w-4" />
-                    <span>Week 1: {week1DaysLeft}d {week1HoursLeft}h</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Week 1 Deadline: {week1Deadline.toLocaleDateString()}
-                  </p>
+                  {!isWeek1DeadlinePassed ? (
+                    <>
+                      <div className="flex items-center justify-end gap-2 text-sm font-medium text-orange-600 dark:text-orange-400">
+                        <Clock className="h-4 w-4" />
+                        <span>Week 1: {week1DaysLeft}d {week1HoursLeft}h</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Week 1 Deadline: {week1Deadline.toLocaleDateString()}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="px-3 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200 rounded-full text-sm font-medium inline-block">
+                      Week 1 Locked
+                    </div>
+                  )}
                 </div>
               )}
               {isAuthenticated ? (
@@ -476,13 +529,20 @@ export function Nostradouglas() {
               </CardDescription>
               {isAuthenticated && (
                 <div className="mt-2">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    selectedTracks.length === 8 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : 'bg-primary/10 text-primary'
-                  }`}>
-                    {selectedTracks.length}/8 tracks selected
-                  </span>
+                  {(() => {
+                    const maxTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+                    const isComplete = selectedTracks.length === maxTracks
+                    return (
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        isComplete
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-primary/10 text-primary'
+                      }`}>
+                        {selectedTracks.length}/{maxTracks} tracks selected
+                        {isWeek1DeadlinePassed && !hasSavedWeek1Prediction && ' (Week 1 locked)'}
+                      </span>
+                    )
+                  })()}
                 </div>
               )}
             </CardHeader>
@@ -510,15 +570,19 @@ export function Nostradouglas() {
                 <div>
                   <CardTitle className="flex items-center gap-3">
                     Your Prediction
-                    {isAuthenticated && (
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        selectedTracks.length === 8 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                          : 'bg-primary/10 text-primary'
-                      }`}>
-                        {selectedTracks.length}/8
-                      </span>
-                    )}
+                    {isAuthenticated && (() => {
+                      const maxTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+                      const isComplete = selectedTracks.length === maxTracks
+                      return (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          isComplete
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-primary/10 text-primary'
+                        }`}>
+                          {selectedTracks.length}/{maxTracks}
+                        </span>
+                      )
+                    })()}
                   </CardTitle>
                   <CardDescription>
                     {isAuthenticated 
@@ -539,10 +603,13 @@ export function Nostradouglas() {
                       <RotateCcw className="h-4 w-4 mr-1" />
                       Reset
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
                       onClick={savePrediction}
-                      disabled={selectedTracks.length < 8 || !isAuthenticated || saving}
+                      disabled={(() => {
+                        const requiredTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+                        return selectedTracks.length < requiredTracks || !isAuthenticated || saving
+                      })()}
                     >
                       {saving ? (
                         <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -576,6 +643,7 @@ export function Nostradouglas() {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-3">
+                      {shouldShowWeek1Placeholder && <PlaceholderTrackCard />}
                       <AnimatePresence>
                         {selectedTracks.map((track) => (
                           <SortableTrackCard
@@ -583,6 +651,7 @@ export function Nostradouglas() {
                             track={track}
                             position={track.position}
                             onRemove={removeTrack}
+                            isLocked={isWeek1DeadlinePassed && hasSavedWeek1Prediction && track.position === 1}
                           />
                         ))}
                       </AnimatePresence>
@@ -592,11 +661,17 @@ export function Nostradouglas() {
                   <DragOverlay>
                     {activeId ? (
                       <div className="opacity-90">
-                        <SortableTrackCard
-                          track={selectedTracks.find(t => t.id === activeId)!}
-                          position={selectedTracks.find(t => t.id === activeId)!.position}
-                          onRemove={removeTrack}
-                        />
+                        {(() => {
+                          const draggedTrack = selectedTracks.find(t => t.id === activeId)!
+                          return (
+                            <SortableTrackCard
+                              track={draggedTrack}
+                              position={draggedTrack.position}
+                              onRemove={removeTrack}
+                              isLocked={isWeek1DeadlinePassed && hasSavedWeek1Prediction && draggedTrack.position === 1}
+                            />
+                          )
+                        })()}
                       </div>
                     ) : null}
                   </DragOverlay>
