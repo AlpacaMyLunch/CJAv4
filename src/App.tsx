@@ -7,6 +7,8 @@ import { AdminGuard } from './components/AdminGuard'
 import { LoginPage } from './pages/LoginPage'
 import { LandingPage } from './pages/LandingPage'
 import { Nostradouglas } from './pages/Nostradouglas'
+import { NostradouglasLeaderboard } from './pages/NostradouglasLeaderboard'
+import { NostradouglasUserResults } from './pages/NostradouglasUserResults'
 import { CommunityPredictions } from './pages/CommunityPredictions'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { Placeholder } from './pages/Placeholder'
@@ -39,23 +41,25 @@ function App() {
                   <Routes>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/nostradouglas" element={<Nostradouglas />} />
+                    <Route path="/nostradouglas/:seasonId" element={<NostradouglasLeaderboard />} />
+                    <Route path="/nostradouglas/:seasonId/user/:userId" element={<NostradouglasUserResults />} />
                     <Route path="/fantasy-sra" element={<Placeholder title="Fantasy SRA" />} />
                     <Route path="/pick-deez" element={<Placeholder title="Pick Deez" />} />
-                    <Route 
-                      path="/community" 
+                    <Route
+                      path="/community"
                       element={
                         <AdminGuard>
                           <CommunityPredictions />
                         </AdminGuard>
-                      } 
+                      }
                     />
-                    <Route 
-                      path="/admin" 
+                    <Route
+                      path="/admin"
                       element={
                         <AdminGuard>
                           <AdminDashboard />
                         </AdminGuard>
-                      } 
+                      }
                     />
                   </Routes>
                 </Layout>

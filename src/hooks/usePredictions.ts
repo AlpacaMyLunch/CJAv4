@@ -61,6 +61,14 @@ export function usePredictions(seasonId: string | null) {
         throw new Error(`Failed to fetch season: ${seasonError.message}`)
       }
 
+      // Check if final deadline has passed
+      const finalDeadline = new Date(seasonData.prediction_deadline)
+      const isFinalDeadlinePassed = new Date() > finalDeadline
+
+      if (isFinalDeadlinePassed) {
+        throw new Error('The prediction deadline has passed. You can no longer modify your predictions.')
+      }
+
       // Check if week 1 deadline has passed
       const week1Deadline = seasonData?.week_1_prediction_deadline ? new Date(seasonData.week_1_prediction_deadline) : null
       const isWeek1DeadlinePassed = week1Deadline ? new Date() > week1Deadline : false

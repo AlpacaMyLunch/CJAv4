@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeasonData } from '@/hooks/useSeasonData'
 import { usePredictions } from '@/hooks/usePredictions'
 import { useToast } from '@/hooks/useToast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  DndContext, 
-  DragOverlay, 
+import {
+  DndContext,
+  DragOverlay,
   closestCorners,
   KeyboardSensor,
   PointerSensor,
@@ -15,24 +16,26 @@ import {
   type DragStartEvent,
   type DragEndEvent
 } from '@dnd-kit/core'
-import { 
-  arrayMove, 
-  SortableContext, 
-  sortableKeyboardCoordinates, 
-  verticalListSortingStrategy 
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { 
-  Clock, 
-  Save, 
+import {
+  Clock,
+  Save,
   RotateCcw,
   X,
-  Loader2
+  Loader2,
+  Trophy,
+  ExternalLink
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { type Track } from '@/lib/supabase'
+import { supabase, type Track, type NostradouglasLeaderboard } from '@/lib/supabase'
 import { trackPrediction, trackUserAction } from '@/utils/analytics'
 
 interface PredictionTrack extends Track {
@@ -69,11 +72,12 @@ function PlaceholderTrackCard() {
   )
 }
 
-function SortableTrackCard({ track, position, onRemove, isLocked }: {
+function SortableTrackCard({ track, position, onRemove, isLocked, isDeadlinePassed }: {
   track: Track,
   position: number,
   onRemove?: (trackId: string) => void,
-  isLocked?: boolean
+  isLocked?: boolean,
+  isDeadlinePassed?: boolean
 }) {
   const { isAuthenticated } = useAuth()
   const {
@@ -82,37 +86,39 @@ function SortableTrackCard({ track, position, onRemove, isLocked }: {
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: track.id, disabled: isLocked })
+  } = useSortable({ id: track.id, disabled: isLocked || isDeadlinePassed })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   }
 
+  const shouldDisableInteraction = isLocked || isDeadlinePassed
+
   return (
     <motion.div
       ref={setNodeRef}
       style={style}
       layout
-      className={isAuthenticated && !isLocked ? "touch-none" : ""}
+      className={isAuthenticated && !shouldDisableInteraction ? "touch-none" : ""}
     >
       <Card className={`group transition-all duration-200 ${
-        isLocked ? 'bg-muted/50 opacity-90' : ''
+        shouldDisableInteraction ? 'bg-muted/50 opacity-90' : ''
       } ${
-        isAuthenticated && !isLocked ? 'hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5' : ''
+        isAuthenticated && !shouldDisableInteraction ? 'hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5' : ''
       }`}>
         <CardContent className="p-4">
           <div
             className="flex items-center space-x-4"
-            {...(isAuthenticated && !isLocked ? attributes : {})}
-            {...(isAuthenticated && !isLocked ? listeners : {})}
+            {...(isAuthenticated && !shouldDisableInteraction ? attributes : {})}
+            {...(isAuthenticated && !shouldDisableInteraction ? listeners : {})}
           >
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium group-hover:bg-accent transition-colors duration-200">
                 {position}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 flex-1">
               <div className="text-xl">🏁</div>
               <div className="flex-1">
@@ -122,7 +128,7 @@ function SortableTrackCard({ track, position, onRemove, isLocked }: {
             </div>
 
             <div className="flex items-center space-x-2" style={{ pointerEvents: 'none' }}>
-              {isAuthenticated && onRemove && !isLocked && (
+              {isAuthenticated && onRemove && !shouldDisableInteraction && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -143,7 +149,7 @@ function SortableTrackCard({ track, position, onRemove, isLocked }: {
                 </button>
               )}
 
-              {isAuthenticated && !isLocked && (
+              {isAuthenticated && !shouldDisableInteraction && (
                 <div className="flex-shrink-0 text-muted-foreground cursor-move" style={{ pointerEvents: 'auto' }} title="Drag to reorder">
                   <svg width="20" height="20" viewBox="0 0 20 20" className="fill-current">
                     <circle cx="5" cy="7" r="1" />
@@ -156,7 +162,7 @@ function SortableTrackCard({ track, position, onRemove, isLocked }: {
                 </div>
               )}
 
-              {isLocked && (
+              {shouldDisableInteraction && (
                 <div className="flex-shrink-0 text-muted-foreground text-xs font-medium">
                   Locked
                 </div>
@@ -210,15 +216,17 @@ function TrackSelectionCard({ track, onSelect, isSelected }: {
 }
 
 export function Nostradouglas() {
+  const navigate = useNavigate()
   const { user, isAuthenticated, signInWithDiscord } = useAuth()
   const { season, tracks, loading: seasonLoading, error: seasonError } = useSeasonData()
   const { predictions, error: predictionsError, savePredictions } = usePredictions(season?.id || null)
   const { addToast } = useToast()
-  
+
   const [selectedTracks, setSelectedTracks] = useState<PredictionTrack[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [hasBeenReset, setHasBeenReset] = useState(false)
+  const [userScore, setUserScore] = useState<NostradouglasLeaderboard | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -238,13 +246,45 @@ export function Nostradouglas() {
           position: prediction.position
         }
       }).sort((a, b) => a.position - b.position)
-      
+
       setSelectedTracks(predictionTracks)
     } else if (predictions.length === 0) {
       // Clear selected tracks if we have no predictions (covers both signed out and signed in with no predictions)
       setSelectedTracks([])
     }
   }, [predictions, tracks, user, season?.id])
+
+  // Fetch user score if authenticated and season exists
+  useEffect(() => {
+    if (!user || !season?.id) {
+      setUserScore(null)
+      return
+    }
+
+    const fetchUserScore = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('nostradouglas_leaderboard')
+          .select('*')
+          .eq('season_id', season.id)
+          .eq('user_id', user.id)
+          .single()
+
+        if (error) {
+          // No results available yet - that's okay
+          setUserScore(null)
+          return
+        }
+
+        setUserScore(data)
+      } catch (err) {
+        // Silent fail - score may not be available
+        setUserScore(null)
+      }
+    }
+
+    fetchUserScore()
+  }, [user, season?.id])
 
   const deadline = season ? new Date(season.prediction_deadline) : new Date()
   const week1Deadline = season?.week_1_prediction_deadline ? new Date(season.week_1_prediction_deadline) : null
@@ -440,6 +480,62 @@ export function Nostradouglas() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Score Banner - Show if deadline passed and user has results */}
+      {isDeadlinePassed && userScore && (
+        <Card className="mb-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {userScore.rank === 1 && <Trophy className="h-8 w-8 text-yellow-500" />}
+                <div>
+                  <h3 className="text-lg font-bold">Your Results</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Rank #{userScore.rank} - {userScore.total_points} points ({userScore.track_points} tracks, {userScore.week_points} weeks)
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/nostradouglas/${season.id}/user/${user?.id}`)}
+                >
+                  View My Results
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+                <Button
+                  onClick={() => navigate(`/nostradouglas/${season.id}`)}
+                >
+                  View Leaderboard
+                  <Trophy className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Link to leaderboard if deadline passed but no score yet */}
+      {isDeadlinePassed && !userScore && (
+        <Card className="mb-6 border-primary/20">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold">Season Complete</h3>
+                <p className="text-sm text-muted-foreground">
+                  View the final leaderboard and results
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate(`/nostradouglas/${season.id}`)}
+              >
+                View Leaderboard
+                <Trophy className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -449,7 +545,7 @@ export function Nostradouglas() {
               Select and order 8 tracks for the upcoming season
             </p>
           </div>
-          
+
           {!isDeadlinePassed ? (
             <div className="text-right space-y-2">
               {week1Deadline && (
@@ -649,6 +745,7 @@ export function Nostradouglas() {
                             position={track.position}
                             onRemove={removeTrack}
                             isLocked={isWeek1DeadlinePassed && hasSavedWeek1Prediction && track.position === 1}
+                            isDeadlinePassed={isDeadlinePassed}
                           />
                         ))}
                       </AnimatePresence>
@@ -666,6 +763,7 @@ export function Nostradouglas() {
                               position={draggedTrack.position}
                               onRemove={removeTrack}
                               isLocked={isWeek1DeadlinePassed && hasSavedWeek1Prediction && draggedTrack.position === 1}
+                              isDeadlinePassed={isDeadlinePassed}
                             />
                           )
                         })()}

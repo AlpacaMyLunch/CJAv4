@@ -126,3 +126,41 @@ export type UserProfilePublic = {
   display_name: string
   created_at: string
 }
+
+// Nostradouglas views
+export type NostradouglasLeaderboard = {
+  user_id: string
+  display_name: string
+  season_id: string
+  season_name: string | null
+  season_number: number
+  total_points: number
+  track_points: number
+  week_points: number
+  predictions_made: number
+  rank: number
+}
+
+export type NostradouglasDetailedResults = {
+  user_id: string
+  display_name: string
+  season_id: string
+  season_name: string | null
+  predicted_week: number
+  predicted_track: string
+  actual_week: number | null
+  track_match_points: number
+  week_match_points: number
+  prediction_points: number
+  status: 'Perfect Match' | 'Track Match Only' | 'No Match'
+}
+
+export type ScheduleWithTrack = {
+  id: string
+  season_id: string
+  week: number
+  track_id: string
+  track_name: string
+  race_date: string | null
+  created_at: string
+}
