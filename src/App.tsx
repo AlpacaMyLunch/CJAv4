@@ -41,8 +41,9 @@ function App() {
                   <Routes>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/nostradouglas" element={<Nostradouglas />} />
-                    <Route path="/nostradouglas/:seasonId" element={<NostradouglasLeaderboard />} />
-                    <Route path="/nostradouglas/:seasonId/user/:userId" element={<NostradouglasUserResults />} />
+                    <Route path="/nostradouglas/leaderboard" element={<NostradouglasLeaderboard />} />
+                    <Route path="/nostradouglas/season/:seasonNumber" element={<NostradouglasLeaderboard />} />
+                    <Route path="/nostradouglas/season/:seasonNumber/user/:userId" element={<NostradouglasUserResults />} />
                     <Route path="/fantasy-sra" element={<Placeholder title="Fantasy SRA" />} />
                     <Route path="/pick-deez" element={<Placeholder title="Pick Deez" />} />
                     <Route

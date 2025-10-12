@@ -6,19 +6,46 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Loader2, Trophy, Users, TrendingUp } from 'lucide-react'
 
 export function NostradouglasLeaderboard() {
-  const { seasonId } = useParams<{ seasonId?: string }>()
+  const { seasonNumber } = useParams<{ seasonNumber?: string }>()
   const navigate = useNavigate()
   const { season: currentSeason, loading: seasonLoading } = useSeasonData()
   const [leaderboard, setLeaderboard] = useState<NostradouglasLeaderboard[]>([])
   const [schedule, setSchedule] = useState<ScheduleWithTrack[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [seasonId, setSeasonId] = useState<string | null>(null)
 
-  // Use provided seasonId or fall back to current season
-  const effectiveSeasonId = seasonId || currentSeason?.id
+  // Resolve season ID from season number or use current season
+  useEffect(() => {
+    const resolveSeason = async () => {
+      if (seasonNumber) {
+        // Fetch season by season number
+        const { data, error } = await supabase
+          .from('seasons')
+          .select('id')
+          .eq('season_number', parseInt(seasonNumber))
+          .single()
+
+        if (error || !data) {
+          setError(`Season ${seasonNumber} not found`)
+          setLoading(false)
+          return
+        }
+
+        setSeasonId(data.id)
+      } else {
+        // Use current season
+        setSeasonId(currentSeason?.id || null)
+      }
+    }
+
+    if (seasonNumber || currentSeason) {
+      resolveSeason()
+    }
+  }, [seasonNumber, currentSeason])
 
   useEffect(() => {
-    if (!effectiveSeasonId) return
+    if (!seasonId) return
 
     const fetchData = async () => {
       try {
@@ -29,7 +56,7 @@ export function NostradouglasLeaderboard() {
         const { data: leaderboardData, error: leaderboardError } = await supabase
           .from('nostradouglas_leaderboard')
           .select('*')
-          .eq('season_id', effectiveSeasonId)
+          .eq('season_id', seasonId)
           .order('rank')
 
         if (leaderboardError) throw leaderboardError
@@ -48,7 +75,7 @@ export function NostradouglasLeaderboard() {
               name
             )
           `)
-          .eq('season_id', effectiveSeasonId)
+          .eq('season_id', seasonId)
           .order('week')
 
         if (scheduleError) throw scheduleError
@@ -75,7 +102,7 @@ export function NostradouglasLeaderboard() {
     }
 
     fetchData()
-  }, [effectiveSeasonId])
+  }, [seasonId])
 
   if (seasonLoading || loading) {
     return (
@@ -192,7 +219,7 @@ export function NostradouglasLeaderboard() {
                       return (
                         <tr
                           key={participant.user_id}
-                          onClick={() => navigate(`/nostradouglas/${effectiveSeasonId}/user/${participant.user_id}`)}
+                          onClick={() => navigate(`/nostradouglas/season/${participant.season_number}/user/${participant.user_id}`)}
                           className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
                             isFirstPlace ? 'bg-yellow-500/5' : ''
                           } ${isTie ? 'bg-blue-500/5' : ''}`}

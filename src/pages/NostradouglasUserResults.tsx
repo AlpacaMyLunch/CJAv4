@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, Trophy, CheckCircle2, Circle, XCircle } from 'lucide-react'
 
 export function NostradouglasUserResults() {
-  const { seasonId, userId } = useParams<{ seasonId: string; userId?: string }>()
+  const { seasonNumber, userId } = useParams<{ seasonNumber: string; userId?: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [userSummary, setUserSummary] = useState<NostradouglasLeaderboard | null>(null)
@@ -15,9 +15,33 @@ export function NostradouglasUserResults() {
   const [schedule, setSchedule] = useState<ScheduleWithTrack[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [seasonId, setSeasonId] = useState<string | null>(null)
 
   // Use provided userId or fall back to current user
   const effectiveUserId = userId || user?.id
+
+  // Resolve season ID from season number
+  useEffect(() => {
+    if (!seasonNumber) return
+
+    const resolveSeason = async () => {
+      const { data, error } = await supabase
+        .from('seasons')
+        .select('id')
+        .eq('season_number', parseInt(seasonNumber))
+        .single()
+
+      if (error || !data) {
+        setError(`Season ${seasonNumber} not found`)
+        setLoading(false)
+        return
+      }
+
+      setSeasonId(data.id)
+    }
+
+    resolveSeason()
+  }, [seasonNumber])
 
   useEffect(() => {
     if (!seasonId || !effectiveUserId) return
@@ -89,7 +113,7 @@ export function NostradouglasUserResults() {
     }
 
     fetchData()
-  }, [seasonId, effectiveUserId])
+  }, [seasonId, effectiveUserId, seasonNumber])
 
   if (loading) {
     return (
@@ -108,7 +132,7 @@ export function NostradouglasUserResults() {
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-destructive mb-4">Error Loading Results</h1>
           <p className="text-muted-foreground">{error || 'User results not found'}</p>
-          <Button onClick={() => navigate(`/nostradouglas/${seasonId}`)} className="mt-4">
+          <Button onClick={() => navigate(`/nostradouglas/season/${seasonNumber}`)} className="mt-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Leaderboard
           </Button>
@@ -149,7 +173,7 @@ export function NostradouglasUserResults() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => navigate(`/nostradouglas/${seasonId}`)}
+          onClick={() => navigate(`/nostradouglas/season/${seasonNumber}`)}
           className="mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />

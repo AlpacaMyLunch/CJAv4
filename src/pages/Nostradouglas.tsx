@@ -497,13 +497,13 @@ export function Nostradouglas() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/nostradouglas/${season.id}/user/${user?.id}`)}
+                  onClick={() => navigate(`/nostradouglas/season/${season.season_number}/user/${user?.id}`)}
                 >
                   View My Results
                   <ExternalLink className="h-4 w-4 ml-2" />
                 </Button>
                 <Button
-                  onClick={() => navigate(`/nostradouglas/${season.id}`)}
+                  onClick={() => navigate(`/nostradouglas/season/${season.season_number}`)}
                 >
                   View Leaderboard
                   <Trophy className="h-4 w-4 ml-2" />
@@ -526,7 +526,7 @@ export function Nostradouglas() {
                 </p>
               </div>
               <Button
-                onClick={() => navigate(`/nostradouglas/${season.id}`)}
+                onClick={() => navigate(`/nostradouglas/season/${season.season_number}`)}
               >
                 View Leaderboard
                 <Trophy className="h-4 w-4 ml-2" />
