@@ -1,18 +1,16 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Star, Plus, Settings, Smartphone, Search, Sparkles, User } from 'lucide-react'
+import { Star, Plus, Settings, Smartphone, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSetupShopData } from '@/hooks/useSetupShopData'
 import { useShopReviews } from '@/hooks/useShopReviews'
 import { useAppReviews } from '@/hooks/useAppReviews'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { ShopReviewCard } from '@/components/ShopReviewCard'
 import { AppReviewCard } from '@/components/AppReviewCard'
 import { ShopReviewForm } from '@/components/ShopReviewForm'
 import { AppReviewForm } from '@/components/AppReviewForm'
-import { RecommendationWizard } from '@/components/RecommendationWizard'
 
 export function SetupShopReviews() {
   const { user, signInWithDiscord, loading: authLoading } = useAuth()
@@ -107,25 +105,7 @@ export function SetupShopReviews() {
           </p>
         </motion.div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="my-reviews" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="my-reviews" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              My Reviews
-            </TabsTrigger>
-            <TabsTrigger value="browse-all" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              Browse All
-            </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Get Recommendations
-            </TabsTrigger>
-          </TabsList>
-
-          {/* My Reviews Tab */}
-          <TabsContent value="my-reviews">
+        {/* My Reviews */}
             {!user ? (
               <Card>
                 <CardContent className="p-12 text-center">
@@ -288,38 +268,6 @@ export function SetupShopReviews() {
                 </motion.div>
               </div>
             )}
-          </TabsContent>
-
-          {/* Browse All Tab */}
-          <TabsContent value="browse-all">
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <h2 className="text-2xl font-bold text-foreground mb-2">Browse All Reviews</h2>
-                <p className="text-muted-foreground">
-                  Coming in Phase 3 - Browse and filter all community reviews
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Get Recommendations Tab */}
-          <TabsContent value="recommendations">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="mb-6 text-center">
-                <h2 className="text-2xl font-bold text-foreground mb-2">Get Personalized Recommendations</h2>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
-                  Tell us what you play and drive, and we'll recommend the best setup shops based on community reviews and ratings.
-                </p>
-              </div>
-              <RecommendationWizard games={games} carClasses={carClasses} />
-            </motion.div>
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   )

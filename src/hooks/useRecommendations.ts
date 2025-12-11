@@ -6,22 +6,35 @@ interface Preference {
   carClassId?: string
 }
 
+export type ReviewComment = {
+  text: string
+  reviewerName: string
+  date: string
+}
+
 export type ShopRecommendation = {
   shop: SetupShop
   averageScore: number
   reviewCount: number
-  factorBreakdown: Record<string, number>
+  setupFactorBreakdown: Record<string, number>
+  appFactorBreakdown: Record<string, number>
+  setupScore: number
   appScore?: number
   matchedGames: string[]
+  setupComments: ReviewComment[]
+  appComments: ReviewComment[]
+  totalReviewCount: number
+  uniqueUserCount: number
 }
 
-export function useRecommendations(preferences: Preference[]) {
+export function useRecommendations(preferences: Preference[], appPreference: 'essential' | 'nice' | 'none' = 'none') {
   const [recommendations, setRecommendations] = useState<ShopRecommendation[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Create stable key from preferences for useEffect dependency
   const preferencesKey = JSON.stringify(preferences)
+  const appPreferenceKey = appPreference
 
   useEffect(() => {
     if (!preferences || preferences.length === 0) {
@@ -44,13 +57,14 @@ export function useRecommendations(preferences: Preference[]) {
         }
 
         // Fetch all current shop reviews with ratings
-        const { data: shopReviews, error: reviewsError } = await supabase
+        const { data: shopReviews, error: reviewsError} = await supabase
           .from('shop_reviews')
           .select(`
             *,
             shop:setup_shops!inner (id, name, has_app),
             game:games!inner (id, name),
             car_class:car_classes!inner (id, name),
+            user:user_profiles_public!inner (display_name),
             review_ratings (
               id,
               factor_id,
@@ -83,10 +97,15 @@ export function useRecommendations(preferences: Preference[]) {
             *,
             shop:setup_shops!inner (id, has_app),
             game:games!inner (id),
+            user:user_profiles_public!inner (display_name),
             app_review_ratings (
               id,
               factor_id,
-              score
+              score,
+              factor:rating_factors (
+                id,
+                name
+              )
             )
           `)
           .eq('is_current', true)
@@ -106,6 +125,7 @@ export function useRecommendations(preferences: Preference[]) {
           reviews: typeof matchingReviews
           appReviews: typeof matchingAppReviews
           games: Set<string>
+          userIds: Set<string>
         }>()
 
         // Process setup reviews
@@ -119,26 +139,35 @@ export function useRecommendations(preferences: Preference[]) {
               shop: fullShop,
               reviews: [],
               appReviews: [],
-              games: new Set()
+              games: new Set(),
+              userIds: new Set()
             })
           }
           const data = shopData.get(shopId)!
           data.reviews.push(review)
           data.games.add(review.game.name)
+          data.userIds.add(review.user_id)
         })
 
         // Process app reviews
         matchingAppReviews.forEach(review => {
           const shopId = review.shop_id
           if (shopData.has(shopId)) {
-            shopData.get(shopId)!.appReviews.push(review)
+            const data = shopData.get(shopId)!
+            data.appReviews.push(review)
+            data.userIds.add(review.user_id)
           }
         })
+
+        // Filter shops based on app preference
+        const finalShopData = appPreference === 'essential'
+          ? new Map(Array.from(shopData.entries()).filter(([_, data]) => data.shop.has_app))
+          : shopData
 
         // Calculate recommendations
         const recs: ShopRecommendation[] = []
 
-        shopData.forEach((data) => {
+        finalShopData.forEach((data) => {
           // Calculate average score from setup reviews
           let totalScore = 0
           let totalRatings = 0
@@ -159,35 +188,99 @@ export function useRecommendations(preferences: Preference[]) {
             })
           })
 
-          const averageScore = totalRatings > 0 ? totalScore / totalRatings : 0
+          const setupScore = totalRatings > 0 ? totalScore / totalRatings : 0
 
-          // Calculate factor breakdown
-          const factorBreakdown: Record<string, number> = {}
+          // Calculate setup factor breakdown
+          const setupFactorBreakdown: Record<string, number> = {}
           factorScores.forEach((value, factorName) => {
-            factorBreakdown[factorName] = value.count > 0 ? value.total / value.count : 0
+            setupFactorBreakdown[factorName] = value.count > 0 ? value.total / value.count : 0
           })
 
-          // Calculate app score if available
+          // Calculate app score and factor breakdown if available
           let appScore: number | undefined
+          const appFactorBreakdown: Record<string, number> = {}
           if (data.shop.has_app && data.appReviews.length > 0) {
             let appTotalScore = 0
             let appTotalRatings = 0
+            const appFactorScores = new Map<string, { total: number, count: number }>()
+
             data.appReviews.forEach(review => {
               review.app_review_ratings.forEach((rating: any) => {
                 appTotalScore += rating.score
                 appTotalRatings++
+
+                const factorName = rating.factor?.name
+                if (factorName) {
+                  if (!appFactorScores.has(factorName)) {
+                    appFactorScores.set(factorName, { total: 0, count: 0 })
+                  }
+                  const factor = appFactorScores.get(factorName)!
+                  factor.total += rating.score
+                  factor.count++
+                }
               })
             })
+
             appScore = appTotalRatings > 0 ? appTotalScore / appTotalRatings : undefined
+
+            // Build app factor breakdown
+            appFactorScores.forEach((value, factorName) => {
+              appFactorBreakdown[factorName] = value.count > 0 ? value.total / value.count : 0
+            })
           }
+
+          // Calculate weighted score based on app preference
+          let averageScore: number
+          if (appPreference === 'essential') {
+            // 50% setup + 50% app (only shops with apps are included due to filter)
+            averageScore = appScore ? (setupScore * 0.5 + appScore * 0.5) : setupScore
+          } else if (appPreference === 'nice') {
+            // 75% setup + 25% app (or 0 if no app)
+            averageScore = appScore ? (setupScore * 0.75 + appScore * 0.25) : setupScore
+          } else {
+            // 100% setup score
+            averageScore = setupScore
+          }
+
+          // Collect setup comments from setup reviews
+          const setupComments: ReviewComment[] = []
+          data.reviews.forEach(review => {
+            if (review.comments && review.comments.trim()) {
+              setupComments.push({
+                text: review.comments,
+                reviewerName: review.user.display_name,
+                date: review.created_at
+              })
+            }
+          })
+
+          // Collect app comments from app reviews
+          const appComments: ReviewComment[] = []
+          data.appReviews.forEach(review => {
+            if (review.comments && review.comments.trim()) {
+              appComments.push({
+                text: review.comments,
+                reviewerName: review.user.display_name,
+                date: review.created_at
+              })
+            }
+          })
+
+          const totalReviewCount = data.reviews.length + data.appReviews.length
 
           recs.push({
             shop: data.shop,
             averageScore,
             reviewCount: data.reviews.length,
-            factorBreakdown,
+            setupFactorBreakdown,
+            appFactorBreakdown,
+            setupScore,
             appScore,
-            matchedGames: Array.from(data.games)
+            matchedGames: Array.from(data.games),
+            setupComments,
+            appComments,
+            totalReviewCount,
+            uniqueUserCount: data.userIds.size
           })
         })
 
@@ -209,7 +302,7 @@ export function useRecommendations(preferences: Preference[]) {
 
     fetchRecommendations()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preferencesKey])
+  }, [preferencesKey, appPreferenceKey])
 
   return {
     recommendations,

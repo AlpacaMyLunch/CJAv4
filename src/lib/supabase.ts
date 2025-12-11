@@ -170,8 +170,6 @@ export type SetupShop = {
   id: string
   name: string
   website_url: string
-  price_model: 'subscription' | 'one-time' | 'hybrid'
-  price_tier: 'budget' | 'mid' | 'premium'
   has_app: boolean
   created_at: string
   updated_at: string

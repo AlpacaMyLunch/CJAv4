@@ -17,6 +17,9 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedGames, setSelectedGames] = useState<Set<string>>(new Set())
   const [selectedCarClasses, setSelectedCarClasses] = useState<Record<string, Set<string>>>({})
+  const [appPreference, setAppPreference] = useState<'essential' | 'nice' | 'none'>('none')
+  const [setupCommentIndices, setSetupCommentIndices] = useState<Record<string, number>>({})
+  const [appCommentIndices, setAppCommentIndices] = useState<Record<string, number>>({})
 
   // Build preferences for recommendations
   const preferences = Array.from(selectedGames).flatMap(gameId => {
@@ -27,7 +30,30 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
     return Array.from(gameCarClasses).map(carClassId => ({ gameId, carClassId }))
   })
 
-  const { recommendations, loading, error } = useRecommendations(currentStep === 3 ? preferences : [])
+  const { recommendations, loading, error } = useRecommendations(
+    currentStep === 4 ? preferences : [],
+    currentStep === 4 ? appPreference : 'none'
+  )
+
+  // Functions for comment navigation
+  const getSetupCommentIndex = (shopId: string) => setupCommentIndices[shopId] || 0
+  const getAppCommentIndex = (shopId: string) => appCommentIndices[shopId] || 0
+
+  const navigateSetupComment = (shopId: string, direction: 'prev' | 'next', maxIndex: number) => {
+    const current = getSetupCommentIndex(shopId)
+    let newIndex = direction === 'next' ? current + 1 : current - 1
+    if (newIndex < 0) newIndex = maxIndex - 1
+    if (newIndex >= maxIndex) newIndex = 0
+    setSetupCommentIndices(prev => ({ ...prev, [shopId]: newIndex }))
+  }
+
+  const navigateAppComment = (shopId: string, direction: 'prev' | 'next', maxIndex: number) => {
+    const current = getAppCommentIndex(shopId)
+    let newIndex = direction === 'next' ? current + 1 : current - 1
+    if (newIndex < 0) newIndex = maxIndex - 1
+    if (newIndex >= maxIndex) newIndex = 0
+    setAppCommentIndices(prev => ({ ...prev, [shopId]: newIndex }))
+  }
 
   const toggleGame = (gameId: string) => {
     const newSelected = new Set(selectedGames)
@@ -62,7 +88,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
   }
 
   const handleNext = () => {
-    if (currentStep < 3 && canGoNext()) {
+    if (currentStep < 4 && canGoNext()) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -77,10 +103,10 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
     <div className="space-y-6">
       {/* Step Indicator */}
       <div className="flex items-center justify-center gap-2">
-        {[1, 2, 3].map(step => (
+        {[1, 2, 3, 4].map(step => (
           <div
             key={step}
-            className={`flex items-center ${step < 3 ? 'flex-1 max-w-[100px]' : ''}`}
+            className={`flex items-center ${step < 4 ? 'flex-1 max-w-[100px]' : ''}`}
           >
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-colors ${
@@ -93,7 +119,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
             >
               {step < currentStep ? <CheckCircle className="h-4 w-4" /> : step}
             </div>
-            {step < 3 && (
+            {step < 4 && (
               <div
                 className={`flex-1 h-1 mx-2 rounded transition-colors ${
                   step < currentStep ? 'bg-primary/20' : 'bg-muted'
@@ -210,6 +236,86 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
           >
             <Card>
               <CardHeader>
+                <CardTitle>Is having a companion app important to you?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setAppPreference('essential')}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      appPreference === 'essential'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">Yes - Essential</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Only show shops with companion apps
+                        </div>
+                      </div>
+                      {appPreference === 'essential' && (
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setAppPreference('nice')}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      appPreference === 'nice'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">Nice to have</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Prefer shops with apps, but consider all options
+                        </div>
+                      </div>
+                      {appPreference === 'nice' && (
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setAppPreference('none')}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      appPreference === 'none'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">Not important</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Focus only on setup quality
+                        </div>
+                      </div>
+                      {appPreference === 'none' && (
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {currentStep === 4 && (
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
                 <CardTitle>Your Recommendations</CardTitle>
               </CardHeader>
               <CardContent>
@@ -231,7 +337,23 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <>
+                    {/* Statistics */}
+                    <div className="bg-primary/10 rounded-lg p-4 mb-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Recommendations based on{' '}
+                        <span className="font-semibold text-foreground">
+                          {recommendations.reduce((sum, rec) => sum + rec.totalReviewCount, 0)} reviews
+                        </span>
+                        {' '}from{' '}
+                        <span className="font-semibold text-foreground">
+                          {new Set(recommendations.flatMap(rec =>
+                            Array(rec.uniqueUserCount).fill(rec.shop.id)
+                          )).size} users
+                        </span>
+                      </p>
+                    </div>
+                    <div className="space-y-4">
                     {recommendations.map((rec, index) => (
                       <div
                         key={rec.shop.id}
@@ -247,8 +369,6 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
                               <h3 className="text-xl font-bold">{rec.shop.name}</h3>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="secondary">{rec.shop.price_tier}</Badge>
-                              <Badge variant="outline">{rec.shop.price_model}</Badge>
                               {rec.matchedGames.map(game => (
                                 <Badge key={game} variant="secondary">
                                   {game}
@@ -267,29 +387,128 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
                           </div>
                         </div>
 
-                        {/* Factor Breakdown */}
-                        <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                          {Object.entries(rec.factorBreakdown).map(([factor, score]) => (
-                            <div key={factor} className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">{factor}</span>
-                              <StarRating value={score} size="sm" showValue={false} />
+                        {/* Setup and App Reviews Grid */}
+                        <div className={`grid gap-4 ${rec.appScore && Object.keys(rec.appFactorBreakdown).length > 0 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+                          {/* Setup Review Card */}
+                          <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-semibold text-muted-foreground">Setup Review</h4>
+                              <div className="flex items-center gap-2">
+                                <StarRating value={rec.setupScore} size="sm" showValue={false} />
+                                <span className="text-sm font-semibold">{rec.setupScore.toFixed(1)}</span>
+                              </div>
                             </div>
-                          ))}
-                        </div>
 
-                        {/* App Score */}
-                        {rec.appScore && (
-                          <div className="mt-4 bg-primary/10 rounded-lg p-3 flex items-center justify-between">
-                            <span className="text-sm font-medium">App Score</span>
-                            <div className="flex items-center gap-2">
-                              <StarRating value={rec.appScore} size="sm" showValue={false} />
-                              <span className="text-sm font-semibold">{rec.appScore.toFixed(1)}</span>
+                            {/* Setup Factor Breakdown */}
+                            <div className="space-y-2">
+                              {Object.entries(rec.setupFactorBreakdown).map(([factor, score]) => (
+                                <div key={factor} className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">{factor}</span>
+                                  <StarRating value={score} size="sm" showValue={false} />
+                                </div>
+                              ))}
                             </div>
+
+                            {/* Setup Comment Carousel */}
+                            {rec.setupComments.length > 0 && (
+                              <div className="border-t border-border pt-3">
+                                <div className="space-y-2">
+                                  <p className="text-sm text-foreground italic">
+                                    "{rec.setupComments[getSetupCommentIndex(rec.shop.id)].text}"
+                                  </p>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>
+                                      {rec.setupComments[getSetupCommentIndex(rec.shop.id)].reviewerName} •{' '}
+                                      {new Date(rec.setupComments[getSetupCommentIndex(rec.shop.id)].date).toLocaleDateString()}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => navigateSetupComment(rec.shop.id, 'prev', rec.setupComments.length)}
+                                        className="p-1 hover:bg-muted rounded transition-colors"
+                                        aria-label="Previous setup comment"
+                                      >
+                                        <ChevronLeft className="h-4 w-4" />
+                                      </button>
+                                      <span className="px-2">
+                                        {getSetupCommentIndex(rec.shop.id) + 1} of {rec.setupComments.length}
+                                      </span>
+                                      <button
+                                        onClick={() => navigateSetupComment(rec.shop.id, 'next', rec.setupComments.length)}
+                                        className="p-1 hover:bg-muted rounded transition-colors"
+                                        aria-label="Next setup comment"
+                                      >
+                                        <ChevronRight className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
+
+                          {/* App Review Card */}
+                          {rec.appScore && Object.keys(rec.appFactorBreakdown).length > 0 && (
+                            <div className="bg-primary/10 rounded-lg p-4 space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-semibold text-muted-foreground">App Review</h4>
+                                <div className="flex items-center gap-2">
+                                  <StarRating value={rec.appScore} size="sm" showValue={false} />
+                                  <span className="text-sm font-semibold">{rec.appScore.toFixed(1)}</span>
+                                </div>
+                              </div>
+
+                              {/* App Factor Breakdown */}
+                              <div className="space-y-2">
+                                {Object.entries(rec.appFactorBreakdown).map(([factor, score]) => (
+                                  <div key={factor} className="flex items-center justify-between">
+                                    <span className="text-sm text-muted-foreground">{factor}</span>
+                                    <StarRating value={score} size="sm" showValue={false} />
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* App Comment Carousel */}
+                              {rec.appComments.length > 0 && (
+                                <div className="border-t border-border pt-3">
+                                  <div className="space-y-2">
+                                    <p className="text-sm text-foreground italic">
+                                      "{rec.appComments[getAppCommentIndex(rec.shop.id)].text}"
+                                    </p>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span>
+                                        {rec.appComments[getAppCommentIndex(rec.shop.id)].reviewerName} •{' '}
+                                        {new Date(rec.appComments[getAppCommentIndex(rec.shop.id)].date).toLocaleDateString()}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => navigateAppComment(rec.shop.id, 'prev', rec.appComments.length)}
+                                          className="p-1 hover:bg-muted rounded transition-colors"
+                                          aria-label="Previous app comment"
+                                        >
+                                          <ChevronLeft className="h-4 w-4" />
+                                        </button>
+                                        <span className="px-2">
+                                          {getAppCommentIndex(rec.shop.id) + 1} of {rec.appComments.length}
+                                        </span>
+                                        <button
+                                          onClick={() => navigateAppComment(rec.shop.id, 'next', rec.appComments.length)}
+                                          className="p-1 hover:bg-muted rounded transition-colors"
+                                          aria-label="Next app comment"
+                                        >
+                                          <ChevronRight className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -308,7 +527,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
           <ChevronLeft className="h-4 w-4" />
           Back
         </Button>
-        {currentStep < 3 && (
+        {currentStep < 4 && (
           <Button
             onClick={handleNext}
             disabled={!canGoNext()}

@@ -9,9 +9,11 @@ import { Logo } from '@/components/Logo'
 const navigationItems = [
   { name: 'Home', href: '/' },
   { name: 'Nostradouglas', href: '/nostradouglas' },
-  { name: 'Setup Reviews', href: '/setup-reviews' },
+  { name: 'Setup Shop Reviews', href: '/setup-reviews' },
+  { name: 'Setup Shop Recommendations', href: '/setup-recommendations' },
   { name: 'Predictions', href: '/community', adminOnly: true },
   { name: 'Admin', href: '/admin', adminOnly: true },
+  { name: 'Setup Shops', href: '/admin/setup-shops', adminOnly: true },
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {
