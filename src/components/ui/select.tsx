@@ -7,6 +7,7 @@ interface SelectProps {
   onValueChange?: (value: string) => void
   children: React.ReactNode
   defaultValue?: string
+  disabled?: boolean
 }
 
 interface SelectTriggerProps {
@@ -14,6 +15,7 @@ interface SelectTriggerProps {
   children: React.ReactNode
   isOpen?: boolean
   setIsOpen?: (open: boolean) => void
+  disabled?: boolean
 }
 
 interface SelectValueProps {
@@ -35,11 +37,12 @@ interface SelectItemProps {
   handleValueChange?: (value: string) => void
 }
 
-const Select = ({ value, onValueChange, children, defaultValue }: SelectProps) => {
+const Select = ({ value, onValueChange, children, defaultValue, disabled = false }: SelectProps) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [selectedValue, setSelectedValue] = React.useState(value || defaultValue || "")
-  
+
   const handleValueChange = (newValue: string) => {
+    if (disabled) return
     setSelectedValue(newValue)
     onValueChange?.(newValue)
     setIsOpen(false)
@@ -49,24 +52,26 @@ const Select = ({ value, onValueChange, children, defaultValue }: SelectProps) =
     <div className="relative">
       {React.Children.map(children, child => {
         if (!React.isValidElement(child)) return child
-        
+
         return React.cloneElement(child, {
           ...(child.props || {}),
           isOpen,
           setIsOpen,
           selectedValue,
           handleValueChange,
+          disabled,
         } as any)
       })}
     </div>
   )
 }
 
-const SelectTrigger = ({ className, children, isOpen, setIsOpen }: SelectTriggerProps) => {
+const SelectTrigger = ({ className, children, isOpen, setIsOpen, disabled = false }: SelectTriggerProps) => {
   return (
     <button
       type="button"
-      onClick={() => setIsOpen?.(!isOpen)}
+      onClick={() => !disabled && setIsOpen?.(!isOpen)}
+      disabled={disabled}
       className={cn(
         "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className

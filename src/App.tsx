@@ -11,6 +11,7 @@ import { NostradouglasLeaderboard } from './pages/NostradouglasLeaderboard'
 import { NostradouglasUserResults } from './pages/NostradouglasUserResults'
 import { CommunityPredictions } from './pages/CommunityPredictions'
 import { AdminDashboard } from './pages/AdminDashboard'
+import { SetupShopReviews } from './pages/SetupShopReviews'
 import { Placeholder } from './pages/Placeholder'
 import { trackPageView } from './utils/analytics'
 
@@ -44,6 +45,7 @@ function App() {
                     <Route path="/nostradouglas/leaderboard" element={<NostradouglasLeaderboard />} />
                     <Route path="/nostradouglas/season/:seasonNumber" element={<NostradouglasLeaderboard />} />
                     <Route path="/nostradouglas/season/:seasonNumber/user/:userId" element={<NostradouglasUserResults />} />
+                    <Route path="/setup-reviews" element={<SetupShopReviews />} />
                     <Route path="/fantasy-sra" element={<Placeholder title="Fantasy SRA" />} />
                     <Route path="/pick-deez" element={<Placeholder title="Pick Deez" />} />
                     <Route

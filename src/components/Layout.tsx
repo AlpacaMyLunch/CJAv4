@@ -9,6 +9,7 @@ import { Logo } from '@/components/Logo'
 const navigationItems = [
   { name: 'Home', href: '/' },
   { name: 'Nostradouglas', href: '/nostradouglas' },
+  { name: 'Setup Reviews', href: '/setup-reviews' },
   { name: 'Predictions', href: '/community', adminOnly: true },
   { name: 'Admin', href: '/admin', adminOnly: true },
 ]

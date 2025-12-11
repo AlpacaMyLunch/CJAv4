@@ -164,3 +164,84 @@ export type ScheduleWithTrack = {
   race_date: string | null
   created_at: string
 }
+
+// Setup Shop Reviews
+export type SetupShop = {
+  id: string
+  name: string
+  website_url: string
+  price_model: 'subscription' | 'one-time' | 'hybrid'
+  price_tier: 'budget' | 'mid' | 'premium'
+  has_app: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type Game = {
+  id: string
+  name: string
+  short_name: string
+  created_at: string
+}
+
+export type CarClass = {
+  id: string
+  game_id: string
+  name: string
+  created_at: string
+}
+
+export type ShopGame = {
+  shop_id: string
+  game_id: string
+}
+
+export type RatingFactor = {
+  id: string
+  category: 'setup' | 'app'
+  name: string
+  description: string
+  display_order: number
+  created_at: string
+}
+
+export type ShopReview = {
+  id: string
+  user_id: string
+  shop_id: string
+  game_id: string
+  car_class_id: string
+  comments: string | null
+  is_current: boolean
+  supersedes_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ReviewRating = {
+  id: string
+  review_id: string
+  factor_id: string
+  score: number
+  created_at: string
+}
+
+export type AppReview = {
+  id: string
+  user_id: string
+  shop_id: string
+  game_id: string | null
+  comments: string | null
+  is_current: boolean
+  supersedes_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AppReviewRating = {
+  id: string
+  review_id: string
+  factor_id: string
+  score: number
+  created_at: string
+}
