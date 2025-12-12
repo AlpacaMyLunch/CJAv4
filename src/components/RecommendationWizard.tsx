@@ -17,7 +17,6 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedGames, setSelectedGames] = useState<Set<string>>(new Set())
   const [selectedCarClasses, setSelectedCarClasses] = useState<Record<string, Set<string>>>({})
-  const [appPreference, setAppPreference] = useState<'essential' | 'nice' | 'none'>('none')
   const [setupCommentIndices, setSetupCommentIndices] = useState<Record<string, number>>({})
   const [appCommentIndices, setAppCommentIndices] = useState<Record<string, number>>({})
 
@@ -31,8 +30,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
   })
 
   const { recommendations, loading, error } = useRecommendations(
-    currentStep === 4 ? preferences : [],
-    currentStep === 4 ? appPreference : 'none'
+    currentStep === 3 ? preferences : []
   )
 
   // Functions for comment navigation
@@ -88,7 +86,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
   }
 
   const handleNext = () => {
-    if (currentStep < 4 && canGoNext()) {
+    if (currentStep < 3 && canGoNext()) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -103,10 +101,10 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
     <div className="space-y-6">
       {/* Step Indicator */}
       <div className="flex items-center justify-center gap-2">
-        {[1, 2, 3, 4].map(step => (
+        {[1, 2, 3].map(step => (
           <div
             key={step}
-            className={`flex items-center ${step < 4 ? 'flex-1 max-w-[100px]' : ''}`}
+            className={`flex items-center ${step < 3 ? 'flex-1 max-w-[100px]' : ''}`}
           >
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-colors ${
@@ -119,7 +117,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
             >
               {step < currentStep ? <CheckCircle className="h-4 w-4" /> : step}
             </div>
-            {step < 4 && (
+            {step < 3 && (
               <div
                 className={`flex-1 h-1 mx-2 rounded transition-colors ${
                   step < currentStep ? 'bg-primary/20' : 'bg-muted'
@@ -229,86 +227,6 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
         {currentStep === 3 && (
           <motion.div
             key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Is having a companion app important to you?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setAppPreference('essential')}
-                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                      appPreference === 'essential'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Yes - Essential</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Only show shops with companion apps
-                        </div>
-                      </div>
-                      {appPreference === 'essential' && (
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      )}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setAppPreference('nice')}
-                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                      appPreference === 'nice'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Nice to have</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Prefer shops with apps, but consider all options
-                        </div>
-                      </div>
-                      {appPreference === 'nice' && (
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      )}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setAppPreference('none')}
-                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                      appPreference === 'none'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Not important</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Focus only on setup quality
-                        </div>
-                      </div>
-                      {appPreference === 'none' && (
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      )}
-                    </div>
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {currentStep === 4 && (
-          <motion.div
-            key="step4"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -527,7 +445,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
           <ChevronLeft className="h-4 w-4" />
           Back
         </Button>
-        {currentStep < 4 && (
+        {currentStep < 3 && (
           <Button
             onClick={handleNext}
             disabled={!canGoNext()}

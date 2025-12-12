@@ -27,14 +27,13 @@ export type ShopRecommendation = {
   uniqueUserCount: number
 }
 
-export function useRecommendations(preferences: Preference[], appPreference: 'essential' | 'nice' | 'none' = 'none') {
+export function useRecommendations(preferences: Preference[]) {
   const [recommendations, setRecommendations] = useState<ShopRecommendation[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Create stable key from preferences for useEffect dependency
   const preferencesKey = JSON.stringify(preferences)
-  const appPreferenceKey = appPreference
 
   useEffect(() => {
     if (!preferences || preferences.length === 0) {
@@ -90,13 +89,12 @@ export function useRecommendations(preferences: Preference[], appPreference: 'es
           })
         }) || []
 
-        // Fetch app reviews for shops with apps
+        // Fetch all current app reviews (not filtered by game since they have null game_id)
         const { data: appReviews, error: appReviewsError } = await supabase
           .from('app_reviews')
           .select(`
             *,
             shop:setup_shops!inner (id, has_app),
-            game:games!inner (id),
             user:user_profiles_public!inner (display_name),
             app_review_ratings (
               id,
@@ -114,16 +112,11 @@ export function useRecommendations(preferences: Preference[], appPreference: 'es
           throw new Error(`Failed to fetch app reviews: ${appReviewsError.message}`)
         }
 
-        // Filter app reviews by preferences (only by game, no car class)
-        const matchingAppReviews = appReviews?.filter(review => {
-          return preferences.some(pref => review.game_id === pref.gameId)
-        }) || []
-
         // Group reviews by shop
         const shopData = new Map<string, {
           shop: SetupShop
           reviews: typeof matchingReviews
-          appReviews: typeof matchingAppReviews
+          appReviews: typeof appReviews
           games: Set<string>
           userIds: Set<string>
         }>()
@@ -149,8 +142,8 @@ export function useRecommendations(preferences: Preference[], appPreference: 'es
           data.userIds.add(review.user_id)
         })
 
-        // Process app reviews
-        matchingAppReviews.forEach(review => {
+        // Process app reviews for shops that have matching setup reviews
+        appReviews?.forEach(review => {
           const shopId = review.shop_id
           if (shopData.has(shopId)) {
             const data = shopData.get(shopId)!
@@ -159,15 +152,10 @@ export function useRecommendations(preferences: Preference[], appPreference: 'es
           }
         })
 
-        // Filter shops based on app preference
-        const finalShopData = appPreference === 'essential'
-          ? new Map(Array.from(shopData.entries()).filter(([_, data]) => data.shop.has_app))
-          : shopData
-
         // Calculate recommendations
         const recs: ShopRecommendation[] = []
 
-        finalShopData.forEach((data) => {
+        shopData.forEach((data) => {
           // Calculate average score from setup reviews
           let totalScore = 0
           let totalRatings = 0
@@ -229,18 +217,8 @@ export function useRecommendations(preferences: Preference[], appPreference: 'es
             })
           }
 
-          // Calculate weighted score based on app preference
-          let averageScore: number
-          if (appPreference === 'essential') {
-            // 50% setup + 50% app (only shops with apps are included due to filter)
-            averageScore = appScore ? (setupScore * 0.5 + appScore * 0.5) : setupScore
-          } else if (appPreference === 'nice') {
-            // 75% setup + 25% app (or 0 if no app)
-            averageScore = appScore ? (setupScore * 0.75 + appScore * 0.25) : setupScore
-          } else {
-            // 100% setup score
-            averageScore = setupScore
-          }
+          // Use setup score as the average score
+          const averageScore = setupScore
 
           // Collect setup comments from setup reviews
           const setupComments: ReviewComment[] = []
@@ -302,7 +280,7 @@ export function useRecommendations(preferences: Preference[], appPreference: 'es
 
     fetchRecommendations()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preferencesKey, appPreferenceKey])
+  }, [preferencesKey])
 
   return {
     recommendations,
