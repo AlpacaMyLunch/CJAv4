@@ -19,7 +19,6 @@
  * - Cleaner, more maintainable code
  */
 
-import { useState } from 'react'
 import { supabase, type ShopReview } from '@/lib/supabase'
 import { useAuth } from './useAuth'
 import { useSupabaseQuery } from './useSupabaseQuery'

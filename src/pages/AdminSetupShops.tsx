@@ -789,7 +789,7 @@ function CarClassForm({ carClass, games, onSave, onCancel }: {
           <label className="block text-sm font-medium mb-2">Game</label>
           <Select value={gameId} onValueChange={setGameId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select game" selectedValue={games.find(g => g.id === gameId)?.name || ''} />
+              <SelectValue placeholder="Select game" />
             </SelectTrigger>
             <SelectContent>
               {games.map(game => (

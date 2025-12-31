@@ -96,10 +96,7 @@ export function AppReviewForm({
               disabled={isEditMode}
             >
               <SelectTrigger>
-                <SelectValue
-                  placeholder="Select a shop with an app"
-                  selectedValue={shopsWithApps.find(s => s.id === shopId)?.name || ''}
-                />
+                <SelectValue placeholder="Select a shop with an app" />
               </SelectTrigger>
               <SelectContent>
                 {shopsWithApps.length > 0 ? (

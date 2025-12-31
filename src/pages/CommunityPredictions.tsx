@@ -14,13 +14,12 @@ import { formatDriverName } from '@/utils/formatting'
 import { RequireAuth } from '@/components/RequireAuth'
 import { formatDateTime } from '@/utils/date'
 import { showSuccessToast, showErrorToast, showAuthRequiredToast } from '@/utils/toast'
-import { DIVISIONS, SPLITS } from '@/constants'
+import { DIVISIONS } from '@/constants'
 
 export function CommunityPredictions() {
-  const { user, loading: authLoading } = useAuth()
-  const { schedule, loading: scheduleLoading, deadline, isDeadlinePassed } = useCurrentRace()
-  const { 
-    loading: predictionsLoading, 
+  const { user } = useAuth()
+  const { schedule, deadline, isDeadlinePassed } = useCurrentRace()
+  const {
     saving,
     error,
     savePrediction,
@@ -32,8 +31,6 @@ export function CommunityPredictions() {
 
   const [selectedDrivers, setSelectedDrivers] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'predictions' | 'past-picks' | 'leaderboard'>('predictions')
-
-  const loading = scheduleLoading || predictionsLoading
 
   const handleDriverSelection = async (division: number, split: 'Gold' | 'Silver', driverId: string) => {
     if (!user) {

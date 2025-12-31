@@ -62,7 +62,7 @@ interface UniqueSchedule {
   id: string
   week: number
   track_name: string
-  race_date?: string
+  race_date: string | undefined
 }
 
 // Interface for unique leaderboard schedule data
@@ -233,42 +233,39 @@ export function usePastPredictions(seasonId: string | null) {
           // Check if this race has any results for this division/split
           const raceKey = `${prediction.schedule?.id}-${prediction.division}-${prediction.split}`
           const raceHasResults = participantCounts[raceKey] > 0
-          
+
           let points = 0
           let finishPosition: number | undefined = undefined
-          let hasResult = false
-          
+
           if (raceHasResults) {
             if (result?.split_position) {
               // Driver participated and finished in their split
-              hasResult = true
               points = result.split_position
               finishPosition = result.split_position
             } else {
               // Driver was predicted but didn't participate (DNF/no-show)
-              hasResult = true
               points = participantCounts[raceKey] + 1 // Last place + 1 in their split
               finishPosition = participantCounts[raceKey] + 1
             }
           }
-          // If raceHasResults is false, no results exist yet (points = 0, hasResult = false)
+          // If raceHasResults is false, no results exist yet (points = 0)
 
           return {
             id: prediction.id,
             week: prediction.schedule?.week || 0,
             track_name: prediction.schedule?.track?.name || 'Unknown',
             division: prediction.division,
-            split: prediction.split,
+            split: prediction.split as 'Gold' | 'Silver',
             predicted_driver: {
               id: prediction.driver?.id || '',
-              first_name: prediction.driver?.first_name,
-              last_name: prediction.driver?.last_name,
+              first_name: prediction.driver?.first_name ?? null,
+              last_name: prediction.driver?.last_name ?? null,
               short_name: prediction.driver?.short_name || 'Unknown',
-              driver_number: prediction.driver?.driver_number
+              driver_number: prediction.driver?.driver_number ?? null
             },
             finish_position: finishPosition,
             points,
-            race_date: prediction.schedule?.race_date
+            race_date: prediction.schedule?.race_date ?? undefined
           }
         })
 

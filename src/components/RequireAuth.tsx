@@ -1,5 +1,6 @@
-import { ReactNode } from 'react'
-import { LucideIcon, User } from 'lucide-react'
+import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import { User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { Button } from './ui/button'

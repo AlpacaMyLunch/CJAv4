@@ -111,10 +111,7 @@ export function ShopReviewForm({
               disabled={isEditMode}
             >
               <SelectTrigger>
-                <SelectValue
-                  placeholder="Select a shop"
-                  selectedValue={shops.find(s => s.id === shopId)?.name || ''}
-                />
+                <SelectValue placeholder="Select a shop" />
               </SelectTrigger>
               <SelectContent>
                 {shops.map(shop => (
@@ -142,10 +139,7 @@ export function ShopReviewForm({
               disabled={isEditMode}
             >
               <SelectTrigger>
-                <SelectValue
-                  placeholder="Select a game"
-                  selectedValue={games.find(g => g.id === gameId)?.name || ''}
-                />
+                <SelectValue placeholder="Select a game" />
               </SelectTrigger>
               <SelectContent>
                 {games.map(game => (
@@ -173,10 +167,7 @@ export function ShopReviewForm({
               disabled={isEditMode || !gameId}
             >
               <SelectTrigger>
-                <SelectValue
-                  placeholder={gameId ? "Select a car class" : "Select a game first"}
-                  selectedValue={filteredCarClasses.find(cc => cc.id === carClassId)?.name || ''}
-                />
+                <SelectValue placeholder={gameId ? "Select a car class" : "Select a game first"} />
               </SelectTrigger>
               <SelectContent>
                 {filteredCarClasses.map(carClass => (

@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, DependencyList } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import type { DependencyList } from 'react'
 import { useToast } from './useToast'
 
 export interface UseSupabaseQueryOptions<T> {

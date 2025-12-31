@@ -18,7 +18,6 @@
  * - Cleaner, more focused code
  */
 
-import { useState, useEffect } from 'react'
 import { supabase, type Season, type Track } from '@/lib/supabase'
 import { useSupabaseQuery } from './useSupabaseQuery'
 

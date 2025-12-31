@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Star, Plus, Settings, Smartphone, User } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
 import { useSetupShopData } from '@/hooks/useSetupShopData'
 import { useShopReviews } from '@/hooks/useShopReviews'
 import { useAppReviews } from '@/hooks/useAppReviews'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { ShopReviewCard } from '@/components/ShopReviewCard'
 import { AppReviewCard } from '@/components/AppReviewCard'
 import { ShopReviewForm } from '@/components/ShopReviewForm'
@@ -16,7 +14,6 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { RequireAuth } from '@/components/RequireAuth'
 
 export function SetupShopReviews() {
-  const { user, signInWithDiscord, loading: authLoading } = useAuth()
   const { shops, games, carClasses, setupFactors, appFactors, loading: dataLoading } = useSetupShopData()
   const { reviews: shopReviews, loading: shopReviewsLoading, saving: savingShop, saveReview: saveShopReview, deleteReview: deleteShopReview } = useShopReviews()
   const { reviews: appReviews, loading: appReviewsLoading, saving: savingApp, saveReview: saveAppReview, deleteReview: deleteAppReview } = useAppReviews()
