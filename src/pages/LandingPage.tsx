@@ -10,7 +10,7 @@ export function LandingPage() {
   const features = [
     {
       title: 'Nostradouglas',
-      description: 'Think you can predict the CJA season schedule? Put your crystal ball to the test and see if you can outsmart the chaos. Golf scoring: lowest points wins!',
+      description: 'Think you can predict the CJA season schedule? Put your crystal ball to the test and see if you can outsmart the chaos.',
       href: '/nostradouglas',
       status: 'active',
       icon: Target,
