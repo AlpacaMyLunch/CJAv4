@@ -196,11 +196,11 @@ export function LandingPage() {
             )}
           </div>
           
-          <div className="mt-16 pt-8 border-t border-border/50">
+          {/* <div className="mt-16 pt-8 border-t border-border/50">
             <p className="text-sm text-muted-foreground/70 italic">
               "The right setup can make all the difference on track." - Coach Jeffries
             </p>
-          </div>
+          </div> */}
         </div>
       </section>
     </div>
