@@ -1,30 +1,17 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Settings, Plus, Edit, Trash2, Save, X } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { SetupShop, Game, CarClass } from '@/lib/supabase'
+import type { Game, CarClass } from '@/lib/supabase'
 import { useToast } from '@/hooks/useToast'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Card, CardContent } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { formatDate } from '@/utils/date'
 import { showSuccessToast, showErrorToast } from '@/utils/toast'
-
-type ShopWithGames = SetupShop & {
-  shop_games: { game_id: string }[]
-}
-
-type ReviewForModeration = {
-  id: string
-  type: 'shop' | 'app'
-  shop_name: string
-  user_name: string
-  created_at: string
-  game_name?: string
-  car_class_name?: string
-}
+import { GamesManager } from '@/components/admin/GamesManager'
+import { ShopsManager, type ShopWithGames } from '@/components/admin/ShopsManager'
+import { CarClassesManager } from '@/components/admin/CarClassesManager'
+import { ReviewModerationPanel, type ReviewForModeration } from '@/components/admin/ReviewModerationPanel'
 
 export function AdminSetupShops() {
   const { addToast } = useToast()
@@ -35,14 +22,6 @@ export function AdminSetupShops() {
   const [shops, setShops] = useState<ShopWithGames[]>([])
   const [carClasses, setCarClasses] = useState<CarClass[]>([])
   const [reviews, setReviews] = useState<ReviewForModeration[]>([])
-
-  // Form states
-  const [editingGame, setEditingGame] = useState<Game | null>(null)
-  const [showGameForm, setShowGameForm] = useState(false)
-  const [editingShop, setEditingShop] = useState<ShopWithGames | null>(null)
-  const [showShopForm, setShowShopForm] = useState(false)
-  const [editingCarClass, setEditingCarClass] = useState<CarClass | null>(null)
-  const [showCarClassForm, setShowCarClassForm] = useState(false)
 
   useEffect(() => {
     fetchAllData()
@@ -76,12 +55,12 @@ export function AdminSetupShops() {
     setGames(data || [])
   }
 
-  const saveGame = async (game: Partial<Game>) => {
-    if (editingGame?.id) {
+  const saveGame = async (game: Partial<Game>, editingId?: string) => {
+    if (editingId) {
       const { error } = await supabase
         .from('games')
         .update({ name: game.name, short_name: game.short_name })
-        .eq('id', editingGame.id)
+        .eq('id', editingId)
 
       if (error) throw error
     } else {
@@ -93,9 +72,7 @@ export function AdminSetupShops() {
     }
 
     await fetchGames()
-    setShowGameForm(false)
-    setEditingGame(null)
-    showSuccessToast(addToast, `Game ${editingGame ? 'updated' : 'created'} successfully`)
+    showSuccessToast(addToast, `Game ${editingId ? 'updated' : 'created'} successfully`)
   }
 
   const deleteGame = async (id: string) => {
@@ -126,12 +103,11 @@ export function AdminSetupShops() {
     setShops(data || [])
   }
 
-  const saveShop = async (shop: Partial<ShopWithGames>, selectedGameIds: string[]) => {
+  const saveShop = async (shop: Partial<ShopWithGames>, selectedGameIds: string[], editingId?: string) => {
     try {
-      let shopId = editingShop?.id
+      let shopId = editingId
 
       if (shopId) {
-        // Update existing shop
         const { error: updateError } = await supabase
           .from('setup_shops')
           .update({
@@ -143,7 +119,6 @@ export function AdminSetupShops() {
 
         if (updateError) throw updateError
       } else {
-        // Create new shop
         const { data: newShop, error: insertError } = await supabase
           .from('setup_shops')
           .insert({
@@ -158,14 +133,13 @@ export function AdminSetupShops() {
         shopId = newShop.id
       }
 
-      // Update shop_games
-      // Delete existing
+      // Update shop_games - delete existing
       await supabase
         .from('shop_games')
         .delete()
         .eq('shop_id', shopId)
 
-      // Insert new
+      // Insert new game associations
       if (selectedGameIds.length > 0) {
         const { error: gamesError } = await supabase
           .from('shop_games')
@@ -175,9 +149,7 @@ export function AdminSetupShops() {
       }
 
       await fetchShops()
-      setShowShopForm(false)
-      setEditingShop(null)
-      showSuccessToast(addToast, `Shop ${editingShop ? 'updated' : 'created'} successfully`)
+      showSuccessToast(addToast, `Shop ${editingId ? 'updated' : 'created'} successfully`)
     } catch (error: any) {
       showErrorToast(addToast, error.message)
     }
@@ -212,12 +184,12 @@ export function AdminSetupShops() {
     setCarClasses(data || [])
   }
 
-  const saveCarClass = async (carClass: Partial<CarClass>) => {
-    if (editingCarClass?.id) {
+  const saveCarClass = async (carClass: Partial<CarClass>, editingId?: string) => {
+    if (editingId) {
       const { error } = await supabase
         .from('car_classes')
         .update({ name: carClass.name, game_id: carClass.game_id })
-        .eq('id', editingCarClass.id)
+        .eq('id', editingId)
 
       if (error) throw error
     } else {
@@ -229,9 +201,7 @@ export function AdminSetupShops() {
     }
 
     await fetchCarClasses()
-    setShowCarClassForm(false)
-    setEditingCarClass(null)
-    showSuccessToast(addToast, `Car class ${editingCarClass ? 'updated' : 'created'} successfully`)
+    showSuccessToast(addToast, `Car class ${editingId ? 'updated' : 'created'} successfully`)
   }
 
   const deleteCarClass = async (id: string) => {
@@ -368,449 +338,40 @@ export function AdminSetupShops() {
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
           </TabsList>
 
-          {/* GAMES TAB */}
           <TabsContent value="games">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Games</CardTitle>
-                  <Button onClick={() => { setEditingGame(null); setShowGameForm(true) }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Game
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showGameForm && (
-                  <GameForm
-                    game={editingGame}
-                    onSave={saveGame}
-                    onCancel={() => { setShowGameForm(false); setEditingGame(null) }}
-                  />
-                )}
-
-                <div className="space-y-2 mt-4">
-                  {games.map(game => (
-                    <div key={game.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                      <div>
-                        <div className="font-medium">{game.name}</div>
-                        <div className="text-sm text-muted-foreground">Short name: {game.short_name}</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => { setEditingGame(game); setShowGameForm(true) }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteGame(game.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <GamesManager
+              games={games}
+              onSave={saveGame}
+              onDelete={deleteGame}
+            />
           </TabsContent>
 
-          {/* SHOPS TAB */}
           <TabsContent value="shops">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Setup Shops</CardTitle>
-                  <Button onClick={() => { setEditingShop(null); setShowShopForm(true) }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Shop
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showShopForm && (
-                  <ShopForm
-                    shop={editingShop}
-                    games={games}
-                    onSave={saveShop}
-                    onCancel={() => { setShowShopForm(false); setEditingShop(null) }}
-                  />
-                )}
-
-                <div className="space-y-2 mt-4">
-                  {shops.map(shop => (
-                    <div key={shop.id} className="p-4 bg-muted/30 rounded-lg">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="font-medium">{shop.name}</div>
-                          <div className="text-sm text-muted-foreground">{shop.website_url}</div>
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {shop.has_app ? 'Has App' : 'No App'}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => { setEditingShop(shop); setShowShopForm(true) }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteShop(shop.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Supported games: {shop.shop_games.map(sg =>
-                          games.find(g => g.id === sg.game_id)?.name
-                        ).filter(Boolean).join(', ') || 'None'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <ShopsManager
+              shops={shops}
+              games={games}
+              onSave={saveShop}
+              onDelete={deleteShop}
+            />
           </TabsContent>
 
-          {/* CAR CLASSES TAB */}
           <TabsContent value="classes">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Car Classes</CardTitle>
-                  <Button onClick={() => { setEditingCarClass(null); setShowCarClassForm(true) }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Car Class
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showCarClassForm && (
-                  <CarClassForm
-                    carClass={editingCarClass}
-                    games={games}
-                    onSave={saveCarClass}
-                    onCancel={() => { setShowCarClassForm(false); setEditingCarClass(null) }}
-                  />
-                )}
-
-                <div className="space-y-6 mt-4">
-                  {games.map(game => {
-                    const gameClasses = carClasses.filter(cc => cc.game_id === game.id)
-                    if (gameClasses.length === 0) return null
-
-                    return (
-                      <div key={game.id}>
-                        <h3 className="font-semibold mb-2">{game.name}</h3>
-                        <div className="space-y-2">
-                          {gameClasses.map(carClass => (
-                            <div key={carClass.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                              <div className="font-medium">{carClass.name}</div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => { setEditingCarClass(carClass); setShowCarClassForm(true) }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteCarClass(carClass.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            <CarClassesManager
+              carClasses={carClasses}
+              games={games}
+              onSave={saveCarClass}
+              onDelete={deleteCarClass}
+            />
           </TabsContent>
 
-          {/* REVIEWS TAB */}
           <TabsContent value="reviews">
-            <Card>
-              <CardHeader>
-                <CardTitle>Review Moderation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {reviews.map(review => (
-                    <div key={`${review.type}-${review.id}`} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium">{review.shop_name}</span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
-                            {review.type === 'shop' ? 'Setup' : 'App'}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          By {review.user_name} · {formatDate(review.created_at)}
-                          {review.game_name && ` · ${review.game_name}`}
-                          {review.car_class_name && ` · ${review.car_class_name}`}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteReview(review)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <ReviewModerationPanel
+              reviews={reviews}
+              onDelete={deleteReview}
+            />
           </TabsContent>
         </Tabs>
       </div>
     </div>
-  )
-}
-
-// ============ FORM COMPONENTS ============
-
-function GameForm({ game, onSave, onCancel }: {
-  game: Game | null
-  onSave: (game: Partial<Game>) => Promise<void>
-  onCancel: () => void
-}) {
-  const [name, setName] = useState(game?.name || '')
-  const [shortName, setShortName] = useState(game?.short_name || '')
-  const [saving, setSaving] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await onSave({ name, short_name: shortName })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="p-4 bg-muted/50 rounded-lg space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="game-name" className="block text-sm font-medium mb-2">Name</label>
-          <input
-            id="game-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label htmlFor="game-short" className="block text-sm font-medium mb-2">Short Name</label>
-          <input
-            id="game-short"
-            type="text"
-            value={shortName}
-            onChange={(e) => setShortName(e.target.value)}
-            required
-            className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          Save
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          <X className="h-4 w-4 mr-2" />
-          Cancel
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-function ShopForm({ shop, games, onSave, onCancel }: {
-  shop: ShopWithGames | null
-  games: Game[]
-  onSave: (shop: Partial<ShopWithGames>, gameIds: string[]) => Promise<void>
-  onCancel: () => void
-}) {
-  const [name, setName] = useState(shop?.name || '')
-  const [websiteUrl, setWebsiteUrl] = useState(shop?.website_url || '')
-  const [hasApp, setHasApp] = useState(shop?.has_app || false)
-  const [selectedGames, setSelectedGames] = useState<string[]>(
-    shop?.shop_games.map(sg => sg.game_id) || []
-  )
-  const [saving, setSaving] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await onSave({
-        name,
-        website_url: websiteUrl,
-        has_app: hasApp
-      }, selectedGames)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const toggleGame = (gameId: string) => {
-    setSelectedGames(prev =>
-      prev.includes(gameId)
-        ? prev.filter(id => id !== gameId)
-        : [...prev, gameId]
-    )
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="p-4 bg-muted/50 rounded-lg space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="shop-name" className="block text-sm font-medium mb-2">Name</label>
-          <input
-            id="shop-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label htmlFor="shop-url" className="block text-sm font-medium mb-2">Website URL</label>
-          <input
-            id="shop-url"
-            type="url"
-            value={websiteUrl}
-            onChange={(e) => setWebsiteUrl(e.target.value)}
-            required
-            className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 mb-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hasApp}
-            onChange={(e) => setHasApp(e.target.checked)}
-            className="w-4 h-4 rounded border-border"
-          />
-          <span className="text-sm">Has App</span>
-        </label>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-2">Supported Games</label>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          {games.map(game => (
-            <label key={game.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-muted">
-              <input
-                type="checkbox"
-                checked={selectedGames.includes(game.id)}
-                onChange={() => toggleGame(game.id)}
-                className="w-4 h-4 rounded border-border"
-              />
-              <span className="text-sm">{game.name}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          Save
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          <X className="h-4 w-4 mr-2" />
-          Cancel
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-function CarClassForm({ carClass, games, onSave, onCancel }: {
-  carClass: CarClass | null
-  games: Game[]
-  onSave: (carClass: Partial<CarClass>) => Promise<void>
-  onCancel: () => void
-}) {
-  const [name, setName] = useState(carClass?.name || '')
-  const [gameId, setGameId] = useState(carClass?.game_id || '')
-  const [saving, setSaving] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await onSave({ name, game_id: gameId })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="p-4 bg-muted/50 rounded-lg space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="class-name" className="block text-sm font-medium mb-2">Name</label>
-          <input
-            id="class-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Game</label>
-          <Select value={gameId} onValueChange={setGameId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select game" />
-            </SelectTrigger>
-            <SelectContent>
-              {games.map(game => (
-                <SelectItem key={game.id} value={game.id}>
-                  {game.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving || !gameId}>
-          <Save className="h-4 w-4 mr-2" />
-          Save
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          <X className="h-4 w-4 mr-2" />
-          Cancel
-        </Button>
-      </div>
-    </form>
   )
 }
