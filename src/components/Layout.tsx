@@ -6,31 +6,56 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTheme, themeDisplayNames, type Theme } from '@/hooks/useTheme'
 import { Logo } from '@/components/Logo'
 
-const navigationItems = [
+type NavigationItem = {
+  name: string
+  href?: string
+  adminOnly?: boolean
+  children?: NavigationItem[]
+}
+
+const navigationItems: NavigationItem[] = [
   { name: 'Home', href: '/' },
   { name: 'Nostradouglas', href: '/nostradouglas' },
-  { name: 'Setup Shop Reviews', href: '/setup-reviews' },
-  { name: 'Setup Shop Recommendations', href: '/setup-recommendations' },
+  {
+    name: 'Setups',
+    children: [
+      { name: 'My Reviews', href: '/setup-reviews' },
+      { name: 'Recommendation Wizard', href: '/setup-recommendations' },
+      { name: 'Manage', href: '/admin/setup-shops', adminOnly: true },
+    ]
+  },
   { name: 'Predictions', href: '/community', adminOnly: true },
   { name: 'Admin', href: '/admin', adminOnly: true },
-  { name: 'Setup Shops', href: '/admin/setup-shops', adminOnly: true },
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const { user, signOut, isAdmin, signInWithDiscord } = useAuth()
   const { theme, setTheme } = useTheme()
   const location = useLocation()
   const themeDropdownRef = useRef<HTMLDivElement>(null)
+  const navDropdownRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const allThemes = Object.keys(themeDisplayNames) as Theme[]
 
-  // Close theme dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
         setIsThemeDropdownOpen(false)
+      }
+
+      // Check nav dropdowns
+      let clickedInside = false
+      navDropdownRefs.current.forEach(ref => {
+        if (ref?.contains(event.target as Node)) {
+          clickedInside = true
+        }
+      })
+      if (!clickedInside) {
+        setOpenDropdown(null)
       }
     }
 
@@ -39,6 +64,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  // Helper to check if a nav item should be visible
+  const shouldShowNavItem = (item: NavigationItem): boolean => {
+    if (item.adminOnly && !isAdmin) return false
+    if (item.children) {
+      return item.children.some(child => shouldShowNavItem(child))
+    }
+    return true
+  }
+
+  // Helper to check if a dropdown item is active
+  const isDropdownActive = (item: NavigationItem): boolean => {
+    if (item.children) {
+      return item.children.some(child => child.href === location.pathname)
+    }
+    return false
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,20 +101,82 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-1">
               {navigationItems
-                .filter(item => !item.adminOnly || isAdmin)
-                .map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    location.pathname === item.href
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
+                .filter(item => shouldShowNavItem(item))
+                .map((item) => {
+                  // Render dropdown navigation item
+                  if (item.children) {
+                    const isActive = isDropdownActive(item)
+                    const isOpen = openDropdown === item.name
+
+                    return (
+                      <div
+                        key={item.name}
+                        ref={(el) => {
+                          if (el) navDropdownRefs.current.set(item.name, el)
+                        }}
+                        className="relative"
+                      >
+                        <button
+                          onClick={() => setOpenDropdown(isOpen ? null : item.name)}
+                          className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                          }`}
+                        >
+                          <span>{item.name}</span>
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+
+                        <AnimatePresence>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute left-0 mt-2 w-56 bg-card border border-border rounded-md shadow-lg z-50"
+                            >
+                              <div className="py-1">
+                                {item.children
+                                  .filter(child => shouldShowNavItem(child))
+                                  .map((child) => (
+                                    <Link
+                                      key={child.name}
+                                      to={child.href!}
+                                      onClick={() => setOpenDropdown(null)}
+                                      className={`block px-4 py-2 text-sm transition-colors ${
+                                        location.pathname === child.href
+                                          ? 'bg-primary text-primary-foreground'
+                                          : 'text-card-foreground hover:bg-secondary hover:text-secondary-foreground'
+                                      }`}
+                                    >
+                                      {child.name}
+                                    </Link>
+                                  ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )
+                  }
+
+                  // Render regular navigation item
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href!}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        location.pathname === item.href
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  )
+                })}
             </div>
 
             {/* User Menu */}
@@ -177,21 +281,53 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <div className="px-2 pt-2 pb-3 space-y-1 bg-background">
                 {navigationItems
-                  .filter(item => !item.adminOnly || isAdmin)
-                  .map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      location.pathname === item.href
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                  .filter(item => shouldShowNavItem(item))
+                  .map((item) => {
+                    // Render nested navigation items
+                    if (item.children) {
+                      return (
+                        <div key={item.name} className="space-y-1">
+                          <div className="px-3 py-2 text-base font-medium text-muted-foreground">
+                            {item.name}
+                          </div>
+                          <div className="pl-4 space-y-1">
+                            {item.children
+                              .filter(child => shouldShowNavItem(child))
+                              .map((child) => (
+                                <Link
+                                  key={child.name}
+                                  to={child.href!}
+                                  className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                    location.pathname === child.href
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                                  }`}
+                                  onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                  {child.name}
+                                </Link>
+                              ))}
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    // Render regular navigation item
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href!}
+                        className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                          location.pathname === item.href
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                        }`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    )
+                  })}
                 
                 <div className="pt-4 border-t border-border mt-4 space-y-2">
                   {/* Mobile Theme Section */}
