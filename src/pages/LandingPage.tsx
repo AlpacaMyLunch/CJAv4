@@ -2,12 +2,21 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
-import { Trophy, Users } from 'lucide-react'
+import { Trophy, Users, Target } from 'lucide-react'
 
 export function LandingPage() {
   const { isAuthenticated, isAdmin, signInWithDiscord } = useAuth()
 
   const features = [
+    {
+      title: 'Nostradouglas',
+      description: 'Think you can predict the CJA season schedule? Put your crystal ball to the test and see if you can outsmart the chaos. Golf scoring: lowest points wins!',
+      href: '/nostradouglas',
+      status: 'active',
+      icon: Target,
+      highlight: 'Live Now',
+      showAlways: true
+    },
     {
       title: 'Community Hub',
       description: 'Join the chaos! See what fellow racing addicts are predicting, argue about track selections, and collectively pretend we know what we\'re doing.',
@@ -116,7 +125,7 @@ export function LandingPage() {
                     {(feature.status === 'active' || feature.status === 'admin-only') && feature.href !== '#' ? (
                       <Link to={feature.href}>
                         <Button className="w-full text-base py-3 group-hover:bg-primary/90 transition-all duration-300">
-                          {feature.title === 'Community Hub' ? '💬 Join the Discussion' : 'Explore Now'}
+                          {feature.title === 'Nostradouglas' ? '🔮 Make Predictions' : feature.title === 'Community Hub' ? '💬 Join the Discussion' : 'Explore Now'}
                         </Button>
                       </Link>
                     ) : (

@@ -74,6 +74,12 @@ export function AdminDashboard() {
 
       if (usersError) throw usersError
 
+      // Map id to user_id for consistency
+      const mappedUsersData = usersData?.map(user => ({
+        ...user,
+        user_id: user.id
+      }))
+
       // Fetch current season
       const { data: seasonData, error: seasonError } = await supabase
         .from('seasons')
@@ -86,7 +92,7 @@ export function AdminDashboard() {
       const currentSeason = seasonData?.[0]
 
       if (!currentSeason) {
-        setUsers(usersData?.map(user => ({
+        setUsers(mappedUsersData?.map(user => ({
           ...user,
           nostradouglas_predictions: [],
           community_predictions: [],
@@ -94,7 +100,7 @@ export function AdminDashboard() {
           community_count: 0
         })) || [])
         setStats({
-          totalUsers: usersData?.length || 0,
+          totalUsers: mappedUsersData?.length || 0,
           usersWithNostradouglas: 0,
           usersWithCommunityPredictions: 0,
           totalNostradouglas: 0,
@@ -170,7 +176,7 @@ export function AdminDashboard() {
       })
 
       // Combine users with their predictions
-      const usersWithPredictions = usersData?.map(user => ({
+      const usersWithPredictions = mappedUsersData?.map(user => ({
         ...user,
         nostradouglas_predictions: userNostradouglas.get(user.user_id) || [],
         community_predictions: userCommunity.get(user.user_id) || [],
