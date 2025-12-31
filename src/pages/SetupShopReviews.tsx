@@ -11,6 +11,9 @@ import { ShopReviewCard } from '@/components/ShopReviewCard'
 import { AppReviewCard } from '@/components/AppReviewCard'
 import { ShopReviewForm } from '@/components/ShopReviewForm'
 import { AppReviewForm } from '@/components/AppReviewForm'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { RequireAuth } from '@/components/RequireAuth'
 
 export function SetupShopReviews() {
   const { user, signInWithDiscord, loading: authLoading } = useAuth()
@@ -23,7 +26,7 @@ export function SetupShopReviews() {
   const [editingShopReview, setEditingShopReview] = useState<typeof shopReviews[0] | null>(null)
   const [editingAppReview, setEditingAppReview] = useState<typeof appReviews[0] | null>(null)
 
-  const loading = authLoading || dataLoading
+  const loading = dataLoading
 
   const handleSaveShopReview = async (data: {
     shopId: string
@@ -80,8 +83,7 @@ export function SetupShopReviews() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <LoadingSpinner message="Loading..." center />
         </div>
       </div>
     )
@@ -106,21 +108,16 @@ export function SetupShopReviews() {
         </motion.div>
 
         {/* My Reviews */}
-            {!user ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-2xl font-bold text-foreground mb-2">Sign In to Review</h2>
-                  <p className="text-muted-foreground mb-6">
-                    Sign in with Discord to create and manage your setup shop reviews
-                  </p>
-                  <Button onClick={() => signInWithDiscord()}>
-                    Sign In with Discord
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-8">
+        <RequireAuth
+          loadingMessage="Loading..."
+          title="Sign In to Review"
+          description="Sign in with Discord to create and manage your setup shop reviews"
+          icon={User}
+          showSignInButton={true}
+          signInButtonText="Sign In with Discord"
+          useCard={true}
+        >
+          <div className="space-y-8">
                 {/* Setup Reviews Section */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -171,17 +168,15 @@ export function SetupShopReviews() {
 
                   {shopReviewsLoading ? (
                     <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                      <p className="text-sm text-muted-foreground">Loading reviews...</p>
+                      <LoadingSpinner size="sm" message="Loading reviews..." center />
                     </div>
                   ) : shopReviews.length === 0 ? (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                        <p className="text-muted-foreground">No setup reviews yet.</p>
-                        <p className="text-sm text-muted-foreground mt-1">Click "Add Setup Review" to get started!</p>
-                      </CardContent>
-                    </Card>
+                    <EmptyState
+                      icon={Settings}
+                      title="No setup reviews yet."
+                      description='Click "Add Setup Review" to get started!'
+                      card
+                    />
                   ) : (
                     <div className="grid gap-4">
                       {shopReviews.map(review => (
@@ -242,17 +237,15 @@ export function SetupShopReviews() {
 
                   {appReviewsLoading ? (
                     <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                      <p className="text-sm text-muted-foreground">Loading app reviews...</p>
+                      <LoadingSpinner size="sm" message="Loading app reviews..." center />
                     </div>
                   ) : appReviews.length === 0 ? (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <Smartphone className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                        <p className="text-muted-foreground">No app reviews yet.</p>
-                        <p className="text-sm text-muted-foreground mt-1">Click "Add App Review" to get started!</p>
-                      </CardContent>
-                    </Card>
+                    <EmptyState
+                      icon={Smartphone}
+                      title="No app reviews yet."
+                      description='Click "Add App Review" to get started!'
+                      card
+                    />
                   ) : (
                     <div className="grid gap-4">
                       {appReviews.map(review => (
@@ -267,7 +260,7 @@ export function SetupShopReviews() {
                   )}
                 </motion.div>
               </div>
-            )}
+        </RequireAuth>
       </div>
     </div>
   )

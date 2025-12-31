@@ -36,7 +36,10 @@ export function useRecommendations(preferences: Preference[]) {
   const preferencesKey = JSON.stringify(preferences)
 
   useEffect(() => {
-    if (!preferences || preferences.length === 0) {
+    // Parse preferences from the stable key to ensure proper dependency tracking
+    const currentPreferences: Preference[] = JSON.parse(preferencesKey)
+
+    if (!currentPreferences || currentPreferences.length === 0) {
       setRecommendations([])
       return
     }
@@ -82,7 +85,7 @@ export function useRecommendations(preferences: Preference[]) {
 
         // Filter reviews by preferences
         const matchingReviews = shopReviews?.filter(review => {
-          return preferences.some(pref => {
+          return currentPreferences.some(pref => {
             const gameMatch = review.game_id === pref.gameId
             const carClassMatch = !pref.carClassId || review.car_class_id === pref.carClassId
             return gameMatch && carClassMatch
@@ -279,7 +282,6 @@ export function useRecommendations(preferences: Preference[]) {
     }
 
     fetchRecommendations()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferencesKey])
 
   return {

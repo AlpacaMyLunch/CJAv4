@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 interface AdminGuardProps {
   children: React.ReactNode
@@ -22,8 +23,7 @@ export function AdminGuard({ children, fallbackPath = '/' }: AdminGuardProps) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+          <LoadingSpinner message="Loading..." center />
         </div>
       </div>
     )

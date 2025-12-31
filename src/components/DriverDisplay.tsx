@@ -8,6 +8,7 @@ interface DriverDisplayProps {
     driver_number: number | null
     first_name: string | null
     last_name: string | null
+    short_name?: string
   }
   className?: string
   imageSize?: 'xs' | 'sm' | 'md' | 'lg'
@@ -25,7 +26,7 @@ export function DriverDisplay({
 
   const getDriverName = () => {
     const fullName = `${driver.first_name || ''} ${driver.last_name || ''}`.trim()
-    return fullName || 'Unknown Driver'
+    return fullName || driver.short_name || 'Unknown Driver'
   }
 
   const getDriverNumber = () => {

@@ -4,7 +4,9 @@ import { Trophy, Calendar, Target, Medal, ChevronDown, ChevronUp, CheckCircle2, 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePastPredictions, type PastPredictionWithResult, type WeeklyScore } from '@/hooks/usePastPredictions'
 import { DriverDisplay } from '@/components/DriverDisplay'
-import { DivisionSplitLabel } from '@/components/DivisionSplitLabel'  
+import { DivisionSplitLabel } from '@/components/DivisionSplitLabel'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { formatDate } from '@/utils/date'  
 
 interface PastPicksProps {
   seasonId: string | null
@@ -40,7 +42,7 @@ function WeeklyScoreCard({ week }: { week: WeeklyScore }) {
             <h3 className="font-bold text-xl text-card-foreground leading-tight">{week.track_name}</h3>
             <div className="flex items-center gap-2 mt-1">
               <div className="text-sm text-muted-foreground">
-                {week.race_date && new Date(week.race_date).toLocaleDateString()}
+                {week.race_date && formatDate(week.race_date)}
               </div>
               <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
               <div className="text-sm text-muted-foreground">
@@ -202,8 +204,7 @@ export function PastPicks({ seasonId }: PastPicksProps) {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            <span className="ml-2 text-muted-foreground">Loading past picks...</span>
+            <LoadingSpinner size="sm" message="Loading past picks..." />
           </div>
         </CardContent>
       </Card>

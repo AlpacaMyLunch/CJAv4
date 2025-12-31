@@ -2,21 +2,12 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
-import { Trophy, Users, TrendingUp } from 'lucide-react'
+import { Trophy, Users } from 'lucide-react'
 
 export function LandingPage() {
   const { isAuthenticated, isAdmin, signInWithDiscord } = useAuth()
 
   const features = [
-    {
-      title: 'Nostradouglas',
-      description: 'Channel your inner oracle and predict which tracks will make the cut this season. Drag, drop, and prepare to either look brilliant or... well, not so much.',
-      href: '/nostradouglas',
-      status: 'active',
-      icon: TrendingUp,
-      highlight: 'Better Than Ever',
-      showAlways: true
-    },
     {
       title: 'Community Hub',
       description: 'Join the chaos! See what fellow racing addicts are predicting, argue about track selections, and collectively pretend we know what we\'re doing.',
@@ -55,26 +46,21 @@ export function LandingPage() {
             <span className="block text-primary">Academy</span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto leading-relaxed">
-            The ultimate playground for SRA enthusiasts.
+            Your hub for setup reviews and racing insights.
           </p>
           <p className="text-lg text-muted-foreground/80 mb-12 max-w-2xl mx-auto">
-            Make bold predictions, create fantasy teams, and join a community that's as passionate about SRA as you are. 
+            Discover the best setup shops, read community reviews, and get personalized recommendations for your sim racing needs.
           </p>
           
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="px-8 py-4 text-lg"
                 onClick={() => signInWithDiscord()}
               >
                 🚀 Jump In
               </Button>
-              <Link to="/nostradouglas">
-                <Button variant="outline" size="lg" className="px-8 py-4 text-lg">
-                  👀 Browse Predictions
-                </Button>
-              </Link>
             </div>
           )}
         </div>
@@ -130,9 +116,7 @@ export function LandingPage() {
                     {(feature.status === 'active' || feature.status === 'admin-only') && feature.href !== '#' ? (
                       <Link to={feature.href}>
                         <Button className="w-full text-base py-3 group-hover:bg-primary/90 transition-all duration-300">
-                          {feature.title === 'Nostradouglas' ? '🔮 Start Predicting' : 
-                           feature.title === 'Community Hub' ? '💬 Join the Discussion' : 
-                           'Explore Now'}
+                          {feature.title === 'Community Hub' ? '💬 Join the Discussion' : 'Explore Now'}
                         </Button>
                       </Link>
                     ) : (
@@ -157,21 +141,21 @@ export function LandingPage() {
               🏆 The Moment of Truth
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-tight">
-              {isAuthenticated 
-                ? "Your Crystal Ball Awaits" 
-                : "Ready to Test Your Racing Intuition?"
+              {isAuthenticated
+                ? "Welcome to the Academy"
+                : "Ready to Join the Community?"
               }
             </h2>
             <p className="text-xl text-muted-foreground mb-4 max-w-3xl mx-auto leading-relaxed">
-              {isAuthenticated 
-                ? "Time to put those prediction skills to the test. Nostradouglas is calling your name, and the CJA crystal ball is ready for your bold forecasts."
-                : "Join our community of racing enthusiasts who aren't afraid to put their predictions on the line. Some will be legendary, others... well, they'll be memorable for different reasons."
+              {isAuthenticated
+                ? "Explore powerful tools and connect with fellow racing enthusiasts. The CJA community is here to help you get the most out of your sim racing experience."
+                : "Join our community of racing enthusiasts. Share knowledge, discover new tools, and connect with others who share your passion."
               }
             </p>
             <p className="text-lg text-muted-foreground/80 mb-12 max-w-2xl mx-auto">
-              {isAuthenticated 
-                ? "Will you be the oracle the community has been waiting for? Only one way to find out."
-                : "Sign in with Discord and let's see what you're made of. The leaderboards won't climb themselves."
+              {isAuthenticated
+                ? "Check out our setup shop reviews and recommendations to find the perfect setup for your racing needs."
+                : "Sign in with Discord to unlock all features and join the conversation."
               }
             </p>
           </div>
@@ -179,34 +163,33 @@ export function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             {isAuthenticated ? (
               <>
-                <Link to="/nostradouglas">
+                <Link to="/setup-reviews">
                   <Button size="lg" className="px-10 py-4 text-lg bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300">
-                    🔮 Make My Predictions
+                    🔧 Browse Setup Reviews
                   </Button>
                 </Link>
-
+                <Link to="/setup-recommendations">
+                  <Button variant="outline" size="lg" className="px-10 py-4 text-lg border-2 hover:bg-secondary/50 transition-all duration-300">
+                    🎯 Get Recommendations
+                  </Button>
+                </Link>
               </>
             ) : (
               <>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="px-10 py-4 text-lg bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300"
                   onClick={() => signInWithDiscord()}
                 >
                   🚀 Join the Academy
                 </Button>
-                <Link to="/nostradouglas">
-                  <Button variant="outline" size="lg" className="px-10 py-4 text-lg border-2 hover:bg-secondary/50 transition-all duration-300">
-                    🔍 Scope Out the Competition
-                  </Button>
-                </Link>
               </>
             )}
           </div>
           
           <div className="mt-16 pt-8 border-t border-border/50">
             <p className="text-sm text-muted-foreground/70 italic">
-              "In racing predictions, confidence is everything. Accuracy is... optional." - Coach Jeffries (probably)
+              "The right setup can make all the difference on track." - Coach Jeffries
             </p>
           </div>
         </div>

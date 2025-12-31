@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useSeasonData } from '@/hooks/useSeasonData'
 import { supabase, type NostradouglasLeaderboard, type ScheduleWithTrack } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Loader2, Trophy, Users, TrendingUp } from 'lucide-react'
+import { Trophy, Users, TrendingUp } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { formatShortDate } from '@/utils/date'
 
 export function NostradouglasLeaderboard() {
   const { seasonNumber } = useParams<{ seasonNumber?: string }>()
@@ -108,8 +110,7 @@ export function NostradouglasLeaderboard() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading leaderboard...</span>
+          <LoadingSpinner message="Loading leaderboard..." />
         </div>
       </div>
     )
@@ -266,10 +267,7 @@ export function NostradouglasLeaderboard() {
                         <p className="font-medium text-sm">{scheduleItem.track_name}</p>
                         {scheduleItem.race_date && (
                           <p className="text-xs text-muted-foreground">
-                            {new Date(scheduleItem.race_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {formatShortDate(scheduleItem.race_date)}
                           </p>
                         )}
                       </div>

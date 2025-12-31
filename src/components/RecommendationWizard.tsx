@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StarRating } from '@/components/ui/StarRating'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useRecommendations } from '@/hooks/useRecommendations'
 import type { Game, CarClass } from '@/lib/supabase'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { formatDate } from '@/utils/date'
 
 interface RecommendationWizardProps {
   games: Game[]
@@ -239,21 +242,18 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
               <CardContent>
                 {loading ? (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Analyzing reviews...</p>
+                    <LoadingSpinner message="Analyzing reviews..." center />
                   </div>
                 ) : error ? (
                   <div className="text-center py-8 text-destructive">
                     Error loading recommendations: {error}
                   </div>
                 ) : recommendations.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground mb-2">No reviews yet for your selections</p>
-                    <p className="text-sm text-muted-foreground">
-                      Be the first to review a setup shop for these preferences!
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={Star}
+                    title="No reviews yet for your selections"
+                    description="Be the first to review a setup shop for these preferences!"
+                  />
                 ) : (
                   <>
                     {/* Statistics */}
@@ -337,7 +337,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
                                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>
                                       {rec.setupComments[getSetupCommentIndex(rec.shop.id)].reviewerName} •{' '}
-                                      {new Date(rec.setupComments[getSetupCommentIndex(rec.shop.id)].date).toLocaleDateString()}
+                                      {formatDate(rec.setupComments[getSetupCommentIndex(rec.shop.id)].date)}
                                     </span>
                                     <div className="flex items-center gap-2">
                                       <button
@@ -395,7 +395,7 @@ export function RecommendationWizard({ games, carClasses }: RecommendationWizard
                                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                                       <span>
                                         {rec.appComments[getAppCommentIndex(rec.shop.id)].reviewerName} •{' '}
-                                        {new Date(rec.appComments[getAppCommentIndex(rec.shop.id)].date).toLocaleDateString()}
+                                        {formatDate(rec.appComments[getAppCommentIndex(rec.shop.id)].date)}
                                       </span>
                                       <div className="flex items-center gap-2">
                                         <button

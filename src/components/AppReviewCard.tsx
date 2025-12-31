@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StarRating } from "@/components/ui/StarRating"
 import type { AppReviewWithDetails } from "@/hooks/useAppReviews"
+import { formatDate } from "@/utils/date"
 
 interface AppReviewCardProps {
   review: AppReviewWithDetails
@@ -91,7 +92,7 @@ export function AppReviewCard({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Calendar className="h-3 w-3" />
         <span>
-          Updated {new Date(review.updated_at).toLocaleDateString()}
+          Updated {formatDate(review.updated_at)}
         </span>
       </div>
     </div>

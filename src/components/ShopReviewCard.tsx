@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StarRating } from "@/components/ui/StarRating"
 import type { ShopReviewWithDetails } from "@/hooks/useShopReviews"
+import { formatDate } from "@/utils/date"
 
 interface ShopReviewCardProps {
   review: ShopReviewWithDetails
@@ -93,7 +94,7 @@ export function ShopReviewCard({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Calendar className="h-3 w-3" />
         <span>
-          Updated {new Date(review.updated_at).toLocaleDateString()}
+          Updated {formatDate(review.updated_at)}
         </span>
       </div>
     </div>

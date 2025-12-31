@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { formatDate } from '@/utils/date'
+import { showSuccessToast, showErrorToast } from '@/utils/toast'
 
 type ShopWithGames = SetupShop & {
   shop_games: { game_id: string }[]
@@ -56,11 +59,7 @@ export function AdminSetupShops() {
       ])
     } catch (error) {
       console.error('Error fetching data:', error)
-      addToast({
-        title: 'Error',
-        description: 'Failed to load data',
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, 'Failed to load data')
     } finally {
       setLoading(false)
     }
@@ -96,11 +95,7 @@ export function AdminSetupShops() {
     await fetchGames()
     setShowGameForm(false)
     setEditingGame(null)
-    addToast({
-      title: 'Success',
-      description: `Game ${editingGame ? 'updated' : 'created'} successfully`,
-      variant: 'success'
-    })
+    showSuccessToast(addToast, `Game ${editingGame ? 'updated' : 'created'} successfully`)
   }
 
   const deleteGame = async (id: string) => {
@@ -112,20 +107,12 @@ export function AdminSetupShops() {
       .eq('id', id)
 
     if (error) {
-      addToast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, error.message)
       return
     }
 
     await fetchGames()
-    addToast({
-      title: 'Success',
-      description: 'Game deleted successfully',
-      variant: 'success'
-    })
+    showSuccessToast(addToast, 'Game deleted successfully')
   }
 
   // ============ SHOPS ============
@@ -190,17 +177,9 @@ export function AdminSetupShops() {
       await fetchShops()
       setShowShopForm(false)
       setEditingShop(null)
-      addToast({
-        title: 'Success',
-        description: `Shop ${editingShop ? 'updated' : 'created'} successfully`,
-        variant: 'success'
-      })
+      showSuccessToast(addToast, `Shop ${editingShop ? 'updated' : 'created'} successfully`)
     } catch (error: any) {
-      addToast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, error.message)
     }
   }
 
@@ -213,20 +192,12 @@ export function AdminSetupShops() {
       .eq('id', id)
 
     if (error) {
-      addToast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, error.message)
       return
     }
 
     await fetchShops()
-    addToast({
-      title: 'Success',
-      description: 'Shop deleted successfully',
-      variant: 'success'
-    })
+    showSuccessToast(addToast, 'Shop deleted successfully')
   }
 
   // ============ CAR CLASSES ============
@@ -260,11 +231,7 @@ export function AdminSetupShops() {
     await fetchCarClasses()
     setShowCarClassForm(false)
     setEditingCarClass(null)
-    addToast({
-      title: 'Success',
-      description: `Car class ${editingCarClass ? 'updated' : 'created'} successfully`,
-      variant: 'success'
-    })
+    showSuccessToast(addToast, `Car class ${editingCarClass ? 'updated' : 'created'} successfully`)
   }
 
   const deleteCarClass = async (id: string) => {
@@ -276,20 +243,12 @@ export function AdminSetupShops() {
       .eq('id', id)
 
     if (error) {
-      addToast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, error.message)
       return
     }
 
     await fetchCarClasses()
-    addToast({
-      title: 'Success',
-      description: 'Car class deleted successfully',
-      variant: 'success'
-    })
+    showSuccessToast(addToast, 'Car class deleted successfully')
   }
 
   // ============ REVIEWS ============
@@ -361,20 +320,12 @@ export function AdminSetupShops() {
       .eq('id', review.id)
 
     if (error) {
-      addToast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, error.message)
       return
     }
 
     await fetchReviews()
-    addToast({
-      title: 'Success',
-      description: 'Review deleted successfully',
-      variant: 'success'
-    })
+    showSuccessToast(addToast, 'Review deleted successfully')
   }
 
   if (loading) {
@@ -383,8 +334,7 @@ export function AdminSetupShops() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card>
             <CardContent className="p-12 text-center">
-              <Settings className="h-16 w-16 text-muted-foreground mx-auto mb-4 animate-spin" />
-              <p className="text-muted-foreground">Loading...</p>
+              <LoadingSpinner size="xl" message="Loading..." center />
             </CardContent>
           </Card>
         </div>
@@ -610,7 +560,7 @@ export function AdminSetupShops() {
                           </span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          By {review.user_name} · {new Date(review.created_at).toLocaleDateString()}
+                          By {review.user_name} · {formatDate(review.created_at)}
                           {review.game_name && ` · ${review.game_name}`}
                           {review.car_class_name && ` · ${review.car_class_name}`}
                         </div>

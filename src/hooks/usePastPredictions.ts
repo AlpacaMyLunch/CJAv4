@@ -1,7 +1,75 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './useAuth'
+import { SPLITS } from '@/constants'
+
+// Interface for race results from the database
+interface RaceResult {
+  schedule_id: string
+  division: number
+  split: string
+  driver_id: string
+  split_position: number
+}
+
+// Interface for schedule with track data from joined queries
+interface ScheduleWithTrack {
+  id: string
+  week: number
+  race_date: string | null
+  season_id: string
+  track: {
+    name: string
+  } | null
+}
+
+// Interface for driver data from joined queries
+interface DriverData {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  short_name: string
+  driver_number: number | null
+}
+
+// Interface for prediction with joined schedule and driver data
+interface PredictionWithJoins {
+  id: string
+  division: number
+  split: string
+  driver_id: string
+  schedule_id: string
+  schedule: ScheduleWithTrack | null
+  driver: DriverData | null
+}
+
+// Interface for leaderboard prediction (less data needed)
+interface LeaderboardPrediction {
+  user_id: string
+  division: number
+  split: string
+  driver_id: string
+  schedule_id: string
+  schedule: {
+    id: string
+    week: number
+    season_id: string
+  } | null
+}
+
+// Interface for unique schedule data extracted from predictions
+interface UniqueSchedule {
+  id: string
+  week: number
+  track_name: string
+  race_date?: string
+}
+
+// Interface for unique leaderboard schedule data
+interface UniqueLeaderboardSchedule {
+  id: string
+  week: number
+}
 
 export type PastPredictionWithResult = {
   id: string
@@ -11,10 +79,10 @@ export type PastPredictionWithResult = {
   split: 'Gold' | 'Silver'
   predicted_driver: {
     id: string
-    first_name?: string
-    last_name?: string
+    first_name: string | null
+    last_name: string | null
     short_name: string
-    driver_number?: number
+    driver_number: number | null
   }
   finish_position?: number  // null if race hasn't finished yet
   points: number  // Lower is better (golf scoring)
@@ -93,14 +161,16 @@ export function usePastPredictions(seasonId: string | null) {
           .eq('user_id', user.id)
           .eq('schedule.season_id', seasonId)
 
+        const typedPredictionsData = predictionsData as unknown as PredictionWithJoins[] | null
+
         if (predictionsError) {
           throw new Error(`Failed to fetch predictions: ${predictionsError.message}`)
         }
 
         // Fetch race results for these predictions
-        const scheduleIds = predictionsData?.map(p => p.schedule?.id).filter(Boolean) || []
-        
-        let resultsData: { schedule_id: string; division: number; split: string; driver_id: string; split_position: number }[] = []
+        const scheduleIds = typedPredictionsData?.map(p => p.schedule?.id).filter((id): id is string => id !== null && id !== undefined) || []
+
+        let resultsData: RaceResult[] = []
         let participantCounts: Record<string, number> = {} // Track participants per division/split/schedule
         
         if (scheduleIds.length > 0) {
@@ -123,26 +193,26 @@ export function usePastPredictions(seasonId: string | null) {
 
         // First, identify all possible division/split combinations that should have been predicted
         const allPossibleCombinations: Array<{schedule_id: string, week: number, track_name: string, division: number, split: 'Gold' | 'Silver', race_date?: string}> = []
-        
+
         // Get unique schedules from predictions
-        const uniqueSchedules = [...new Map((predictionsData || []).map(p => [
+        const uniqueSchedules: UniqueSchedule[] = [...new Map((typedPredictionsData || []).map(p => [
           p.schedule?.id,
           {
-            id: p.schedule?.id,
-            week: p.schedule?.week,
-            track_name: p.schedule?.track?.name,
-            race_date: p.schedule?.race_date
+            id: p.schedule?.id || '',
+            week: p.schedule?.week || 0,
+            track_name: p.schedule?.track?.name || 'Unknown',
+            race_date: p.schedule?.race_date || undefined
           }
-        ])).values()].filter(s => s.id)
+        ])).values()].filter((s): s is UniqueSchedule => !!s.id)
 
         // For each schedule, create all possible division/split combinations
         uniqueSchedules.forEach(schedule => {
           for (let division = 1; division <= 6; division++) {
             ['Gold', 'Silver'].forEach(split => {
               allPossibleCombinations.push({
-                schedule_id: schedule.id!,
-                week: schedule.week || 0,
-                track_name: schedule.track_name || 'Unknown',
+                schedule_id: schedule.id,
+                week: schedule.week,
+                track_name: schedule.track_name,
                 division,
                 split: split as 'Gold' | 'Silver',
                 race_date: schedule.race_date
@@ -152,7 +222,7 @@ export function usePastPredictions(seasonId: string | null) {
         })
 
         // Process actual predictions with results
-        const actualPredictions: PastPredictionWithResult[] = (predictionsData || []).map(prediction => {
+        const actualPredictions: PastPredictionWithResult[] = (typedPredictionsData || []).map(prediction => {
           const result = resultsData.find(r => 
             r.schedule_id === prediction.schedule?.id &&
             r.division === prediction.division &&
@@ -312,14 +382,16 @@ export function usePastPredictions(seasonId: string | null) {
           `)
           .eq('schedule.season_id', seasonId)
 
+        const typedAllPredictions = allPredictions as unknown as LeaderboardPrediction[] | null
+
         if (predictionsError) {
           throw new Error(`Failed to fetch leaderboard predictions: ${predictionsError.message}`)
         }
 
         // Get all results for the season
-        const scheduleIds = allPredictions?.map(p => p.schedule?.id).filter(Boolean) || []
-        
-        let resultsData: { schedule_id: string; division: number; split: string; driver_id: string; split_position: number }[] = []
+        const scheduleIds = typedAllPredictions?.map(p => p.schedule?.id).filter((id): id is string => id !== null && id !== undefined) || []
+
+        let resultsData: RaceResult[] = []
         let leaderboardParticipantCounts: Record<string, number> = {}
         
         if (scheduleIds.length > 0) {
@@ -341,15 +413,15 @@ export function usePastPredictions(seasonId: string | null) {
         }
 
         // Fetch user display names from the public view
-        const userIds = [...new Set(allPredictions?.map(p => p.user_id) || [])]
+        const userIds = [...new Set(typedAllPredictions?.map(p => p.user_id) || [])]
         const userNames = new Map<string, string>()
-        
+
         if (userIds.length > 0) {
           const { data: userProfiles, error: profilesError } = await supabase
             .from('user_profiles_public')
             .select('user_id, display_name')
             .in('user_id', userIds)
-          
+
           if (!profilesError && userProfiles) {
             userProfiles.forEach(profile => {
               userNames.set(profile.user_id, profile.display_name)
@@ -362,26 +434,26 @@ export function usePastPredictions(seasonId: string | null) {
 
         // Create all possible combinations for leaderboard calculation too
         const allLeaderboardCombinations: Array<{schedule_id: string, week: number, division: number, split: 'Gold' | 'Silver', user_id: string}> = []
-        
+
         // Get unique schedules and users from predictions
-        const uniqueSchedulesLeaderboard = [...new Map((allPredictions || []).map(p => [
+        const uniqueSchedulesLeaderboard: UniqueLeaderboardSchedule[] = [...new Map((typedAllPredictions || []).map(p => [
           p.schedule?.id,
           {
-            id: p.schedule?.id,
-            week: p.schedule?.week
+            id: p.schedule?.id || '',
+            week: p.schedule?.week || 0
           }
-        ])).values()].filter(s => s.id)
-        
-        const uniqueUsers = [...new Set(allPredictions?.map(p => p.user_id) || [])]
+        ])).values()].filter((s): s is UniqueLeaderboardSchedule => !!s.id)
+
+        const uniqueUsers = [...new Set(typedAllPredictions?.map(p => p.user_id) || [])]
         
         // For each user and schedule, create all possible division/split combinations
         uniqueUsers.forEach(userId => {
           uniqueSchedulesLeaderboard.forEach(schedule => {
             for (let division = 1; division <= 6; division++) {
-              ['Gold', 'Silver'].forEach(split => {
+              SPLITS.forEach(split => {
                 allLeaderboardCombinations.push({
-                  schedule_id: schedule.id!,
-                  week: schedule.week || 0,
+                  schedule_id: schedule.id,
+                  week: schedule.week,
                   division,
                   split: split as 'Gold' | 'Silver',
                   user_id: userId
@@ -395,10 +467,10 @@ export function usePastPredictions(seasonId: string | null) {
         allLeaderboardCombinations.forEach(combo => {
           const raceKey = `${combo.schedule_id}-${combo.division}-${combo.split}`
           const raceHasResults = leaderboardParticipantCounts[raceKey] > 0
-          
+
           if (raceHasResults) {
             // Check if user made a prediction for this combination
-            const userPrediction = allPredictions?.find(p => 
+            const userPrediction = typedAllPredictions?.find(p => 
               p.user_id === combo.user_id &&
               p.schedule?.id === combo.schedule_id &&
               p.division === combo.division &&
@@ -493,8 +565,8 @@ export function usePastPredictions(seasonId: string | null) {
 
   // Helper function to calculate previous week's leaderboard for position comparison
   const calculatePreviousWeekLeaderboard = async (
-    seasonId: string, 
-    currentSchedules: any[], 
+    seasonId: string,
+    currentSchedules: UniqueLeaderboardSchedule[],
     userNames: Map<string, string>
   ): Promise<LeaderboardEntry[]> => {
     try {
@@ -524,12 +596,14 @@ export function usePastPredictions(seasonId: string | null) {
         .eq('schedule.season_id', seasonId)
         .lte('schedule.week', previousWeek)
 
-      if (prevError || !prevPredictions) {
+      const typedPrevPredictions = prevPredictions as unknown as LeaderboardPrediction[] | null
+
+      if (prevError || !typedPrevPredictions) {
         return []
       }
 
       // Get results up to the previous week
-      const prevScheduleIds = prevPredictions.map(p => p.schedule_id)
+      const prevScheduleIds = typedPrevPredictions.map(p => p.schedule_id)
       const { data: prevResults, error: prevResultsError } = await supabase
         .from('race_results_public')
         .select('schedule_id, division, split, driver_id, split_position')
@@ -548,13 +622,16 @@ export function usePastPredictions(seasonId: string | null) {
 
       // Calculate previous week scores using the same logic
       const prevUserScores = new Map<string, { total_points: number, weeks: Set<number> }>()
-      
+
       // Get unique users and schedules for previous weeks
-      const prevUniqueUsers = [...new Set(prevPredictions.map(p => p.user_id))]
-      const prevUniqueSchedules = [...new Set(prevPredictions.map(p => ({
-        id: p.schedule_id,
-        week: p.schedule?.week
-      })))]
+      const prevUniqueUsers = [...new Set(typedPrevPredictions.map(p => p.user_id))]
+      const prevUniqueSchedules: UniqueLeaderboardSchedule[] = [...new Map(typedPrevPredictions.map(p => [
+        p.schedule_id,
+        {
+          id: p.schedule_id,
+          week: p.schedule?.week || 0
+        }
+      ])).values()]
 
       // Apply mandatory participation for previous weeks
       prevUniqueUsers.forEach(userId => {
@@ -563,9 +640,9 @@ export function usePastPredictions(seasonId: string | null) {
             ['Gold', 'Silver'].forEach(split => {
               const raceKey = `${schedule.id}-${division}-${split}`
               const raceHasResults = prevParticipantCounts[raceKey] > 0
-              
+
               if (raceHasResults) {
-                const userPrediction = prevPredictions.find(p => 
+                const userPrediction = typedPrevPredictions.find(p => 
                   p.user_id === userId &&
                   p.schedule_id === schedule.id &&
                   p.division === division &&

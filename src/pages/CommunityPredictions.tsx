@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { DriverDisplay } from '@/components/DriverDisplay'
 import { DivisionSplitLabel } from '@/components/DivisionSplitLabel'
 import { formatDriverName } from '@/utils/formatting'
-
-const DIVISIONS = [1, 2, 3, 4, 5, 6]
+import { RequireAuth } from '@/components/RequireAuth'
+import { formatDateTime } from '@/utils/date'
+import { showSuccessToast, showErrorToast, showAuthRequiredToast } from '@/utils/toast'
+import { DIVISIONS, SPLITS } from '@/constants'
 
 export function CommunityPredictions() {
   const { user, loading: authLoading } = useAuth()
@@ -31,15 +33,11 @@ export function CommunityPredictions() {
   const [selectedDrivers, setSelectedDrivers] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'predictions' | 'past-picks' | 'leaderboard'>('predictions')
 
-  const loading = authLoading || scheduleLoading || predictionsLoading
+  const loading = scheduleLoading || predictionsLoading
 
   const handleDriverSelection = async (division: number, split: 'Gold' | 'Silver', driverId: string) => {
     if (!user) {
-      addToast({
-        title: 'Authentication Required',
-        description: 'Please sign in to make predictions',
-        variant: 'destructive'
-      })
+      showAuthRequiredToast(addToast)
       return
     }
 
@@ -75,11 +73,7 @@ export function CommunityPredictions() {
           })
         } catch (error) {
           console.error('Failed to clear prediction:', error)
-          addToast({
-            title: 'Error',
-            description: 'Failed to clear prediction',
-            variant: 'destructive'
-          })
+          showErrorToast(addToast, 'Failed to clear prediction')
         }
       }
       return
@@ -89,18 +83,10 @@ export function CommunityPredictions() {
 
     try {
       await savePrediction(division, split, driverId)
-      addToast({
-        title: 'Success',
-        description: 'Prediction saved successfully!',
-        variant: 'success'
-      })
+      showSuccessToast(addToast, 'Prediction saved successfully!')
     } catch (error) {
       console.error('Failed to save prediction:', error)
-      addToast({
-        title: 'Error',
-        description: 'Failed to save prediction',
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, 'Failed to save prediction')
       // Revert local state on error
       setSelectedDrivers(prev => {
         const updated = { ...prev }
@@ -121,37 +107,6 @@ export function CommunityPredictions() {
 
 
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading predictions...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-foreground mb-2">Community Predictions</h1>
-          <p className="text-muted-foreground mb-6">
-            Sign in to make your predictions for who will win each division and split in the upcoming race!
-          </p>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-sm text-muted-foreground">
-              Choose your predicted winners for each division and split combination. 
-              You can change your predictions until the deadline.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -165,7 +120,19 @@ export function CommunityPredictions() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-8">
+    <RequireAuth
+      loadingMessage="Loading predictions..."
+      title="Community Predictions"
+      description="Sign in to make your predictions for who will win each division and split in the upcoming race!"
+      icon={Users}
+      additionalInfo={
+        <p className="text-sm text-muted-foreground">
+          Choose your predicted winners for each division and split combination.
+          You can change your predictions until the deadline.
+        </p>
+      }
+    >
+      <div className="min-h-screen bg-background py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
@@ -205,9 +172,9 @@ export function CommunityPredictions() {
           }`}>
             <Clock className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {isDeadlinePassed 
-                ? 'Predictions are now closed' 
-                : `Predictions close: ${deadline.toLocaleDateString()} at ${deadline.toLocaleTimeString()}`
+              {isDeadlinePassed
+                ? 'Predictions are now closed'
+                : `Predictions close: ${formatDateTime(deadline)}`
               }
             </span>
           </div>
@@ -475,5 +442,6 @@ export function CommunityPredictions() {
         )}
       </div>
     </div>
+    </RequireAuth>
   )
 }

@@ -2,6 +2,7 @@ import { Crown, Medal, Trophy, Users, TrendingUp, TrendingDown, Minus, Plus } fr
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePastPredictions, type LeaderboardEntry } from '@/hooks/usePastPredictions'
 import { useAuth } from '@/hooks/useAuth'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 interface LeaderboardProps {
   seasonId: string | null
@@ -157,8 +158,7 @@ export function Leaderboard({ seasonId }: LeaderboardProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            <span className="ml-2 text-muted-foreground">Loading leaderboard...</span>
+            <LoadingSpinner size="sm" message="Loading leaderboard..." />
           </div>
         </CardContent>
       </Card>

@@ -4,7 +4,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase, type NostradouglasLeaderboard, type NostradouglasDetailedResults, type ScheduleWithTrack } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, Trophy, CheckCircle2, Circle, XCircle } from 'lucide-react'
+import { ArrowLeft, Trophy, CheckCircle2, Circle, XCircle } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { formatShortDate } from '@/utils/date'
 
 export function NostradouglasUserResults() {
   const { seasonNumber, userId } = useParams<{ seasonNumber: string; userId?: string }>()
@@ -119,8 +121,7 @@ export function NostradouglasUserResults() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading results...</span>
+          <LoadingSpinner message="Loading results..." />
         </div>
       </div>
     )
@@ -312,10 +313,7 @@ export function NostradouglasUserResults() {
                         <p className="font-medium text-sm">{scheduleItem.track_name}</p>
                         {scheduleItem.race_date && (
                           <p className="text-xs text-muted-foreground">
-                            {new Date(scheduleItem.race_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {formatShortDate(scheduleItem.race_date)}
                           </p>
                         )}
                       </div>

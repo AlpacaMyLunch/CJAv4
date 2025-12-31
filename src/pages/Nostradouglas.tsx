@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useSeasonData } from '@/hooks/useSeasonData'
 import { usePredictions } from '@/hooks/usePredictions'
 import { useToast } from '@/hooks/useToast'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { getMaxTracks, getRequiredTracks, getStartPosition } from '@/constants'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
@@ -33,10 +35,13 @@ import {
   Trophy,
   ExternalLink
 } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { supabase, type Track, type NostradouglasLeaderboard } from '@/lib/supabase'
 import { trackPrediction, trackUserAction } from '@/utils/analytics'
+import { formatDate } from '@/utils/date'
+import { showSuccessToast, showErrorToast, showAuthRequiredToast } from '@/utils/toast'
 
 interface PredictionTrack extends Track {
   position: number
@@ -304,12 +309,10 @@ export function Nostradouglas() {
   const shouldShowWeek1Placeholder = isWeek1DeadlinePassed && !hasSavedWeek1Prediction && selectedTracks.length > 0
 
   const handleTrackSelect = (track: Track) => {
-    // Calculate max tracks: 8 normally, or 7 if week 1 deadline passed and no saved week 1 prediction
-    const maxTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+    const maxTracks = getMaxTracks(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
 
     if (selectedTracks.length < maxTracks && !isDeadlinePassed && isAuthenticated) {
-      // If week 1 deadline has passed and user has no saved week 1 prediction, start at position 2
-      const startPosition = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 2 : 1
+      const startPosition = getStartPosition(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
       const newPosition = startPosition + selectedTracks.length
 
       const newTrack: PredictionTrack = {
@@ -406,15 +409,11 @@ export function Nostradouglas() {
 
   const savePrediction = async () => {
     if (!isAuthenticated) {
-      addToast({
-        title: 'Authentication Required',
-        description: 'Please sign in to save your prediction!',
-        variant: 'destructive'
-      })
+      showAuthRequiredToast(addToast)
       return
     }
 
-    const requiredTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+    const requiredTracks = getRequiredTracks(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
     if (selectedTracks.length !== requiredTracks) {
       addToast({
         title: 'Incomplete Selection',
@@ -439,18 +438,10 @@ export function Nostradouglas() {
       // Track prediction save
       trackPrediction('save', { track_count: selectedTracks.length })
 
-      addToast({
-        title: 'Success!',
-        description: 'Your prediction has been saved successfully.',
-        variant: 'success'
-      })
+      showSuccessToast(addToast, 'Your prediction has been saved successfully.')
     } catch (error) {
       console.error('Failed to save prediction:', error)
-      addToast({
-        title: 'Save Failed',
-        description: 'Failed to save prediction. Please try again.',
-        variant: 'destructive'
-      })
+      showErrorToast(addToast, 'Failed to save prediction. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -460,8 +451,7 @@ export function Nostradouglas() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading season data...</span>
+          <LoadingSpinner message="Loading season data..." />
         </div>
       </div>
     )
@@ -557,7 +547,7 @@ export function Nostradouglas() {
                         <span>Week 1: {week1DaysLeft}d {week1HoursLeft}h</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Week 1 Deadline: {week1Deadline.toLocaleDateString()}
+                        Week 1 Deadline: {formatDate(week1Deadline)}
                       </p>
                     </>
                   ) : (
@@ -574,7 +564,7 @@ export function Nostradouglas() {
                     <span>{daysLeft}d {hoursLeft}h remaining</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Full Deadline: {deadline.toLocaleDateString()}
+                    Full Deadline: {formatDate(deadline)}
                   </p>
                 </>
               ) : (
@@ -623,7 +613,7 @@ export function Nostradouglas() {
               {isAuthenticated && (
                 <div className="mt-2">
                   {(() => {
-                    const maxTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+                    const maxTracks = getMaxTracks(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
                     const isComplete = selectedTracks.length === maxTracks
                     return (
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -664,7 +654,7 @@ export function Nostradouglas() {
                   <CardTitle className="flex items-center gap-3">
                     Your Prediction
                     {isAuthenticated && (() => {
-                      const maxTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+                      const maxTracks = getMaxTracks(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
                       const isComplete = selectedTracks.length === maxTracks
                       return (
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -700,7 +690,7 @@ export function Nostradouglas() {
                       size="sm"
                       onClick={savePrediction}
                       disabled={(() => {
-                        const requiredTracks = (isWeek1DeadlinePassed && !hasSavedWeek1Prediction) ? 7 : 8
+                        const requiredTracks = getRequiredTracks(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
                         return selectedTracks.length < requiredTracks || !isAuthenticated || saving
                       })()}
                     >
@@ -717,13 +707,11 @@ export function Nostradouglas() {
             </CardHeader>
             <CardContent>
               {selectedTracks.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">🏁</div>
-                  <h3 className="text-lg font-medium mb-2">No tracks selected</h3>
-                  <p className="text-muted-foreground">
-                    Start by selecting tracks from the left panel
-                  </p>
-                </div>
+                <EmptyState
+                  emoji="🏁"
+                  title="No tracks selected"
+                  description="Start by selecting tracks from the left panel"
+                />
               ) : (
                 <DndContext
                   sensors={sensors}
