@@ -23,7 +23,7 @@ const CUMULATIVE_VALUE = 'cumulative'
 export function NostradouglasLeaderboard() {
   const { seasonNumber } = useParams<{ seasonNumber?: string }>()
   const navigate = useNavigate()
-  const { season: currentSeason, loading: seasonLoading } = useSeasonData()
+  const { loading: seasonLoading } = useSeasonData()
   const [leaderboard, setLeaderboard] = useState<NostradouglasLeaderboardType[]>([])
   const [schedule, setSchedule] = useState<ScheduleWithTrack[]>([])
   const [loading, setLoading] = useState(true)
@@ -285,9 +285,6 @@ export function NostradouglasLeaderboard() {
   const averageScore = leaderboard.length > 0
     ? Math.round((leaderboard.reduce((sum, p) => sum + p.total_points, 0) / leaderboard.length) * 10) / 10
     : 0
-
-  // Calculate max possible score for display
-  const maxPossibleScore = isCumulative ? availableSeasons.length * 16 : 16
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
