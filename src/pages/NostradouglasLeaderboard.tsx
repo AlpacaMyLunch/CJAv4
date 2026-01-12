@@ -402,7 +402,10 @@ export function NostradouglasLeaderboard() {
                   <tbody>
                     {leaderboard.map((participant, index) => {
                       const isFirstPlace = participant.rank === 1
-                      const isTie = index > 0 && participant.rank === leaderboard[index - 1].rank
+                      // Check if tied with previous OR next row
+                      const isTiedWithPrev = index > 0 && participant.rank === leaderboard[index - 1].rank
+                      const isTiedWithNext = index < leaderboard.length - 1 && participant.rank === leaderboard[index + 1].rank
+                      const isTie = isTiedWithPrev || isTiedWithNext
                       const participantWithSeasons = participant as NostradouglasLeaderboardType & { seasons_participated?: number }
 
                       return (
@@ -411,7 +414,7 @@ export function NostradouglasLeaderboard() {
                           onClick={isCumulative ? undefined : () => navigate(`/nostradouglas/season/${participant.season_number}/user/${participant.user_id}`)}
                           className={`border-b transition-colors ${
                             isFirstPlace ? 'bg-yellow-500/5' : ''
-                          } ${isTie ? 'bg-blue-500/5' : ''} ${!isCumulative ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
+                          } ${isTie && !isFirstPlace ? 'bg-blue-500/5' : ''} ${!isCumulative ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
                         >
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
