@@ -402,16 +402,13 @@ export function NostradouglasLeaderboard() {
                   <tbody>
                     {leaderboard.map((participant) => {
                       const isFirstPlace = participant.rank === 1
-                      const isEvenRank = participant.rank % 2 === 0
                       const participantWithSeasons = participant as NostradouglasLeaderboardType & { seasons_participated?: number }
 
                       return (
                         <tr
                           key={participant.user_id}
                           onClick={isCumulative ? undefined : () => navigate(`/nostradouglas/season/${participant.season_number}/user/${participant.user_id}`)}
-                          className={`border-b transition-colors ${
-                            isEvenRank ? 'bg-muted/30' : ''
-                          } ${!isCumulative ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
+                          className={`border-b transition-colors ${!isCumulative ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
                         >
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
