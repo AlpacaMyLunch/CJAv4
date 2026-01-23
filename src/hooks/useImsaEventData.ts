@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
   supabase,
-  type ImsaClass,
   type ImsaManufacturer,
   type ImsaEntry,
   type ImsaClassWithEntries
