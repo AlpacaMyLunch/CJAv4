@@ -581,13 +581,15 @@ function PredictionStats({ eventId, classes }: PredictionStatsProps) {
                           : 'bg-secondary'
                       }`}
                     >
-                      <span className="font-medium">{displayName}</span>
+                      <span className={`font-medium ${isComplete ? 'text-green-900 dark:text-green-100' : 'text-foreground'}`}>
+                        {displayName}
+                      </span>
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">
+                        <span className={isComplete ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}>
                           {userPodiumCount}/{totalPodiumPicks} podium
                         </span>
-                        <span className="text-muted-foreground">|</span>
-                        <span className="text-muted-foreground">
+                        <span className={isComplete ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}>|</span>
+                        <span className={isComplete ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}>
                           {userMfrCount}/{totalMfrPicks} mfr
                         </span>
                         {isComplete && (
