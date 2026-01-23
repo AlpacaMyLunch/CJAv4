@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Settings, Plus, Check, X } from 'lucide-react'
+import { Settings, Plus, Check, AlertCircle, Calculator, Users, BarChart3 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type {
   ImsaClassInsert,
   ImsaManufacturerInsert,
-  ImsaEntryInsert
+  ImsaEntryInsert,
+  ImsaClassWithEntries,
+  ImsaEntryResult,
+  ImsaEntryStatus
 } from '@/lib/supabase'
 import { useToast } from '@/hooks/useToast'
 import { useImsaEvents } from '@/hooks/useImsaEvents'
@@ -16,6 +19,594 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { showSuccessToast, showErrorToast } from '@/utils/toast'
+import { calculateImsaScores } from '@/utils/calculateImsaScores'
+
+// Results Entry Form Component
+interface ResultsEntryFormProps {
+  classData: ImsaClassWithEntries
+  eventId: string
+  onSave: () => void
+}
+
+function ResultsEntryForm({ classData, eventId, onSave }: ResultsEntryFormProps) {
+  const [results, setResults] = useState<Record<string, {
+    finish_position: number | null
+    status: ImsaEntryStatus
+    laps_completed: number | null
+  }>>({})
+  const [saving, setSaving] = useState(false)
+  const [existingResults, setExistingResults] = useState<ImsaEntryResult[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch existing results on mount
+  useEffect(() => {
+    const fetchExisting = async () => {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('imsa_entry_results')
+        .select('*')
+        .eq('event_id', eventId)
+        .in('entry_id', classData.entries.map(e => e.id))
+
+      if (!error && data) {
+        setExistingResults(data)
+        // Pre-populate form
+        const initial: Record<string, {
+          finish_position: number | null
+          status: ImsaEntryStatus
+          laps_completed: number | null
+        }> = {}
+        data.forEach(r => {
+          initial[r.entry_id] = {
+            finish_position: r.finish_position,
+            status: r.status,
+            laps_completed: r.laps_completed
+          }
+        })
+        setResults(prev => ({ ...prev, ...initial }))
+      }
+      setLoading(false)
+    }
+    fetchExisting()
+  }, [eventId, classData.entries])
+
+  const handleSave = async () => {
+    setSaving(true)
+
+    const resultsToUpsert = classData.entries
+      .filter(entry => results[entry.id]?.finish_position != null)
+      .map(entry => ({
+        event_id: eventId,
+        entry_id: entry.id,
+        finish_position: results[entry.id].finish_position,
+        status: results[entry.id].status || 'finished',
+        laps_completed: results[entry.id].laps_completed
+      }))
+
+    const { error } = await supabase
+      .from('imsa_entry_results')
+      .upsert(resultsToUpsert, { onConflict: 'event_id,entry_id' })
+
+    if (error) {
+      console.error(error)
+    } else {
+      // Refresh existing results
+      const { data } = await supabase
+        .from('imsa_entry_results')
+        .select('*')
+        .eq('event_id', eventId)
+        .in('entry_id', classData.entries.map(e => e.id))
+      if (data) {
+        setExistingResults(data)
+      }
+      onSave()
+    }
+    setSaving(false)
+  }
+
+  if (loading) {
+    return <LoadingSpinner size="sm" message="Loading results..." center />
+  }
+
+  // Sort entries by finish position (if exists) then by car number
+  const sortedEntries = [...classData.entries].sort((a, b) => {
+    const posA = results[a.id]?.finish_position ?? 999
+    const posB = results[b.id]?.finish_position ?? 999
+    if (posA !== posB) return posA - posB
+    return parseInt(a.car_number) - parseInt(b.car_number)
+  })
+
+  const savedCount = existingResults.length
+  const totalEntries = classData.entries.length
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {savedCount} of {totalEntries} results saved
+        </p>
+        {savedCount === totalEntries && (
+          <span className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+            <Check className="h-4 w-4" /> All results entered
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {sortedEntries.map(entry => {
+          const hasResult = existingResults.some(r => r.entry_id === entry.id)
+          return (
+            <div
+              key={entry.id}
+              className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-lg border ${
+                hasResult
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                  : 'bg-background border-border'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className="font-mono font-bold w-12 shrink-0">#{entry.car_number}</span>
+                <span className="text-sm truncate">{entry.team_name}</span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  ({entry.manufacturer.name})
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Pos"
+                  className="w-16 p-2 border rounded bg-background text-foreground text-center"
+                  value={results[entry.id]?.finish_position ?? ''}
+                  onChange={(e) => setResults(prev => ({
+                    ...prev,
+                    [entry.id]: {
+                      ...prev[entry.id],
+                      finish_position: e.target.value ? parseInt(e.target.value) : null,
+                      status: prev[entry.id]?.status || 'finished',
+                      laps_completed: prev[entry.id]?.laps_completed ?? null
+                    }
+                  }))}
+                />
+
+                <select
+                  className="p-2 border rounded bg-background text-foreground"
+                  value={results[entry.id]?.status || 'finished'}
+                  onChange={(e) => setResults(prev => ({
+                    ...prev,
+                    [entry.id]: {
+                      ...prev[entry.id],
+                      finish_position: prev[entry.id]?.finish_position ?? null,
+                      status: e.target.value as ImsaEntryStatus,
+                      laps_completed: prev[entry.id]?.laps_completed ?? null
+                    }
+                  }))}
+                >
+                  <option value="finished">Finished</option>
+                  <option value="DNF">DNF</option>
+                  <option value="DNS">DNS</option>
+                  <option value="DQ">DQ</option>
+                </select>
+
+                {hasResult && (
+                  <span className="text-green-600 dark:text-green-400 shrink-0">
+                    <Check className="h-5 w-5" />
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <Button onClick={handleSave} disabled={saving}>
+        {saving ? 'Saving...' : `Save ${classData.name} Results`}
+      </Button>
+    </div>
+  )
+}
+
+// Prediction Statistics Component
+interface PredictionStatsProps {
+  eventId: string
+  classes: ImsaClassWithEntries[]
+}
+
+interface PodiumPredictionWithDetails {
+  id: string
+  user_id: string
+  event_id: string
+  class_id: string
+  position: number
+  entry_id: string
+  entry: { id: string; car_number: string; team_name: string } | null
+}
+
+interface ManufacturerPredictionWithDetails {
+  id: string
+  user_id: string
+  event_id: string
+  class_id: string
+  manufacturer_id: string
+  predicted_rank: number
+  manufacturer: { id: string; name: string } | null
+}
+
+function PredictionStats({ eventId, classes }: PredictionStatsProps) {
+  const [podiumPredictions, setPodiumPredictions] = useState<PodiumPredictionWithDetails[]>([])
+  const [manufacturerPredictions, setManufacturerPredictions] = useState<ManufacturerPredictionWithDetails[]>([])
+  const [users, setUsers] = useState<Map<string, string>>(new Map())
+  const [loading, setLoading] = useState(true)
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true)
+
+      // Fetch podium predictions with entry info
+      const { data: podiumData } = await supabase
+        .from('imsa_podium_predictions')
+        .select(`
+          id,
+          user_id,
+          event_id,
+          class_id,
+          position,
+          entry_id,
+          entry:imsa_entries(id, car_number, team_name)
+        `)
+        .eq('event_id', eventId)
+
+      // Fetch manufacturer predictions with manufacturer info
+      const { data: mfrData } = await supabase
+        .from('imsa_manufacturer_predictions')
+        .select(`
+          id,
+          user_id,
+          event_id,
+          class_id,
+          manufacturer_id,
+          predicted_rank,
+          manufacturer:imsa_manufacturers(id, name)
+        `)
+        .eq('event_id', eventId)
+
+      // Transform the data - Supabase returns joined tables as objects, not arrays
+      const transformedPodium: PodiumPredictionWithDetails[] = (podiumData || []).map((p: Record<string, unknown>) => ({
+        id: p.id as string,
+        user_id: p.user_id as string,
+        event_id: p.event_id as string,
+        class_id: p.class_id as string,
+        position: p.position as number,
+        entry_id: p.entry_id as string,
+        entry: p.entry as { id: string; car_number: string; team_name: string } | null
+      }))
+
+      const transformedMfr: ManufacturerPredictionWithDetails[] = (mfrData || []).map((p: Record<string, unknown>) => ({
+        id: p.id as string,
+        user_id: p.user_id as string,
+        event_id: p.event_id as string,
+        class_id: p.class_id as string,
+        manufacturer_id: p.manufacturer_id as string,
+        predicted_rank: p.predicted_rank as number,
+        manufacturer: p.manufacturer as { id: string; name: string } | null
+      }))
+
+      setPodiumPredictions(transformedPodium)
+      setManufacturerPredictions(transformedMfr)
+
+      // Fetch user profiles for display names
+      const allUserIds = new Set([
+        ...(podiumData || []).map((p: { user_id: string }) => p.user_id),
+        ...(mfrData || []).map((p: { user_id: string }) => p.user_id)
+      ])
+
+      if (allUserIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('user_id, display_name')
+          .in('user_id', Array.from(allUserIds))
+
+        const userMap = new Map<string, string>()
+        profiles?.forEach(p => {
+          userMap.set(p.user_id, p.display_name || 'Unknown')
+        })
+        // Add any users without profiles
+        allUserIds.forEach(userId => {
+          if (!userMap.has(userId)) {
+            userMap.set(userId, 'Unknown User')
+          }
+        })
+        setUsers(userMap)
+      }
+
+      if (classes.length > 0 && !selectedClassId) {
+        setSelectedClassId(classes[0].id)
+      }
+
+      setLoading(false)
+    }
+
+    fetchStats()
+  }, [eventId, classes, selectedClassId])
+
+  if (loading) {
+    return <LoadingSpinner size="md" message="Loading prediction stats..." center />
+  }
+
+  const uniqueUserIds = new Set([
+    ...podiumPredictions.map(p => p.user_id),
+    ...manufacturerPredictions.map(p => p.user_id)
+  ])
+
+  // Calculate expected predictions per user
+  const totalPodiumPicks = classes.length * 3 // 4 classes x 3 positions
+  const totalMfrPicks = classes
+    .filter(c => c.has_manufacturer_prediction)
+    .reduce((sum, c) => sum + c.manufacturers.length, 0)
+
+  // Get predictions for selected class
+  const classPodiumPredictions = podiumPredictions.filter(p => p.class_id === selectedClassId)
+  const classMfrPredictions = manufacturerPredictions.filter(p => p.class_id === selectedClassId)
+  const selectedClass = classes.find(c => c.id === selectedClassId)
+
+  // Calculate podium pick distribution
+  const podiumDistribution: Record<number, Record<string, number>> = { 1: {}, 2: {}, 3: {} }
+  classPodiumPredictions.forEach(p => {
+    const carNum = p.entry?.car_number || 'Unknown'
+    if (!podiumDistribution[p.position][carNum]) {
+      podiumDistribution[p.position][carNum] = 0
+    }
+    podiumDistribution[p.position][carNum]++
+  })
+
+  // Calculate manufacturer rank distribution
+  const mfrRankDistribution: Record<string, number[]> = {}
+  classMfrPredictions.forEach(p => {
+    const mfrName = p.manufacturer?.name || 'Unknown'
+    if (!mfrRankDistribution[mfrName]) {
+      mfrRankDistribution[mfrName] = []
+    }
+    mfrRankDistribution[mfrName].push(p.predicted_rank)
+  })
+
+  // Calculate average rank per manufacturer
+  const mfrAverageRanks: { name: string; avg: number; count: number }[] = []
+  for (const [name, ranks] of Object.entries(mfrRankDistribution)) {
+    const avg = ranks.reduce((a, b) => a + b, 0) / ranks.length
+    mfrAverageRanks.push({ name, avg, count: ranks.length })
+  }
+  mfrAverageRanks.sort((a, b) => a.avg - b.avg)
+
+  const positionLabels: Record<number, string> = { 1: 'P1 Picks', 2: 'P2 Picks', 3: 'P3 Picks' }
+  const positionEmojis: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd' }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-secondary rounded-lg">
+                <p className="text-3xl font-bold text-primary">{uniqueUserIds.size}</p>
+                <p className="text-sm text-muted-foreground">Total Participants</p>
+              </div>
+              <div className="text-center p-4 bg-secondary rounded-lg">
+                <p className="text-3xl font-bold text-primary">{podiumPredictions.length}</p>
+                <p className="text-sm text-muted-foreground">Podium Picks</p>
+              </div>
+              <div className="text-center p-4 bg-secondary rounded-lg">
+                <p className="text-3xl font-bold text-primary">{manufacturerPredictions.length}</p>
+                <p className="text-sm text-muted-foreground">Manufacturer Ranks</p>
+              </div>
+              <div className="text-center p-4 bg-secondary rounded-lg">
+                <p className="text-3xl font-bold text-primary">
+                  {totalPodiumPicks + totalMfrPicks}
+                </p>
+                <p className="text-sm text-muted-foreground">Expected per User</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Class Selector */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Tabs value={selectedClassId || ''} onValueChange={setSelectedClassId}>
+          <TabsList>
+            {classes.map(cls => (
+              <TabsTrigger key={cls.id} value={cls.id}>
+                {cls.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </motion.div>
+
+      {/* Podium Popularity */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>Podium Pick Distribution - {selectedClass?.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map(position => {
+                const sorted = Object.entries(podiumDistribution[position])
+                  .sort(([, a], [, b]) => b - a)
+
+                return (
+                  <div key={position}>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                        position === 1 ? 'bg-yellow-500 text-yellow-950' :
+                        position === 2 ? 'bg-gray-400 text-gray-950' :
+                        'bg-amber-600 text-amber-950'
+                      }`}>
+                        {positionEmojis[position]}
+                      </span>
+                      {positionLabels[position]}
+                    </h4>
+                    {sorted.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No picks yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {sorted.slice(0, 5).map(([carNum, count], idx) => {
+                          const percentage = uniqueUserIds.size > 0
+                            ? Math.round(count / uniqueUserIds.size * 100)
+                            : 0
+                          return (
+                            <div key={carNum} className="flex items-center gap-2">
+                              <span className={`font-mono text-sm ${idx === 0 ? 'font-bold' : ''}`}>
+                                #{carNum}
+                              </span>
+                              <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                                <div
+                                  className={`h-full ${
+                                    position === 1 ? 'bg-yellow-500' :
+                                    position === 2 ? 'bg-gray-400' :
+                                    'bg-amber-600'
+                                  }`}
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground w-16 text-right">
+                                {count} ({percentage}%)
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Manufacturer Rankings (if applicable) */}
+      {selectedClass?.has_manufacturer_prediction && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>Manufacturer Ranking Consensus - {selectedClass?.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Average predicted rank (lower = predicted to perform better)
+              </p>
+              {mfrAverageRanks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No manufacturer predictions yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {mfrAverageRanks.map((mfr, idx) => (
+                    <div key={mfr.name} className="flex items-center gap-4 p-2 rounded-lg bg-muted/50">
+                      <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold ${
+                        idx === 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                      }`}>
+                        {idx + 1}
+                      </span>
+                      <span className="flex-1 font-medium">{mfr.name}</span>
+                      <span className="text-muted-foreground">
+                        avg: {mfr.avg.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({mfr.count} vote{mfr.count !== 1 ? 's' : ''})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* User Participation List */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Participants ({users.size})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {users.size === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No predictions made yet
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {Array.from(users.entries()).map(([userId, displayName]) => {
+                  const userPodiumCount = podiumPredictions.filter(p => p.user_id === userId).length
+                  const userMfrCount = manufacturerPredictions.filter(p => p.user_id === userId).length
+                  const isComplete = userPodiumCount === totalPodiumPicks && userMfrCount === totalMfrPicks
+
+                  return (
+                    <div
+                      key={userId}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg gap-2 ${
+                        isComplete
+                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                          : 'bg-secondary'
+                      }`}
+                    >
+                      <span className="font-medium">{displayName}</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">
+                          {userPodiumCount}/{totalPodiumPicks} podium
+                        </span>
+                        <span className="text-muted-foreground">|</span>
+                        <span className="text-muted-foreground">
+                          {userMfrCount}/{totalMfrPicks} mfr
+                        </span>
+                        {isComplete && (
+                          <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                            <Check className="h-4 w-4" />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  )
+}
 
 export function AdminImsaEvents() {
   const { addToast } = useToast()
@@ -24,8 +615,80 @@ export function AdminImsaEvents() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('events')
   const [saving, setSaving] = useState(false)
+  const [calculating, setCalculating] = useState(false)
+  const [resultsClassTab, setResultsClassTab] = useState<string | null>(null)
+  const [allResultsEntered, setAllResultsEntered] = useState(false)
 
   const { classes, refetch: refetchEventData } = useImsaEventData(selectedEventId)
+
+  // Check if all results are entered for the selected event
+  useEffect(() => {
+    const checkAllResults = async () => {
+      if (!selectedEventId || classes.length === 0) {
+        setAllResultsEntered(false)
+        return
+      }
+
+      const allEntryIds = classes.flatMap(c => c.entries.map(e => e.id))
+      if (allEntryIds.length === 0) {
+        setAllResultsEntered(false)
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('imsa_entry_results')
+        .select('entry_id')
+        .eq('event_id', selectedEventId)
+        .in('entry_id', allEntryIds)
+
+      if (!error && data) {
+        setAllResultsEntered(data.length === allEntryIds.length)
+      }
+    }
+    checkAllResults()
+  }, [selectedEventId, classes])
+
+  // Set default results class tab when classes load
+  useEffect(() => {
+    if (classes.length > 0 && !resultsClassTab) {
+      setResultsClassTab(classes[0].id)
+    }
+  }, [classes, resultsClassTab])
+
+  // Handle Calculate Scores
+  const handleCalculateScores = async () => {
+    if (!selectedEventId) return
+
+    setCalculating(true)
+
+    const result = await calculateImsaScores(selectedEventId)
+
+    if (result.success) {
+      showSuccessToast(addToast, `Scores calculated for ${result.usersScored} users!`)
+    } else {
+      showErrorToast(addToast, result.error || 'Failed to calculate scores')
+    }
+
+    setCalculating(false)
+  }
+
+  // Handle results save callback
+  const handleResultsSaved = async () => {
+    showSuccessToast(addToast, 'Results saved!')
+    // Re-check if all results are entered
+    if (!selectedEventId || classes.length === 0) return
+
+    const allEntryIds = classes.flatMap(c => c.entries.map(e => e.id))
+    const { data } = await supabase
+      .from('imsa_entry_results')
+      .select('entry_id')
+      .eq('event_id', selectedEventId)
+      .in('entry_id', allEntryIds)
+
+    if (data) {
+      setAllResultsEntered(data.length === allEntryIds.length)
+    }
+  }
 
   // New event form state
   const [newEvent, setNewEvent] = useState({
@@ -273,9 +936,10 @@ export function AdminImsaEvents() {
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="events">Events</TabsTrigger>
               <TabsTrigger value="entries">Entries</TabsTrigger>
+              <TabsTrigger value="predictions">Predictions</TabsTrigger>
               <TabsTrigger value="results">Results</TabsTrigger>
             </TabsList>
 
@@ -533,18 +1197,163 @@ export function AdminImsaEvents() {
               )}
             </TabsContent>
 
+            {/* Predictions Tab */}
+            <TabsContent value="predictions" className="space-y-6">
+              {!selectedEventId ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-foreground mb-2">Select an Event</h2>
+                    <p className="text-muted-foreground">
+                      Select an event from the Events tab first to view prediction statistics.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : classes.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-foreground mb-2">No Classes</h2>
+                    <p className="text-muted-foreground">
+                      Create classes and entries in the Entries tab first.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <PredictionStats eventId={selectedEventId} classes={classes} />
+              )}
+            </TabsContent>
+
             {/* Results Tab */}
-            <TabsContent value="results">
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <X className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-foreground mb-2">Coming Soon</h2>
-                  <p className="text-muted-foreground">
-                    Results entry will be available after the race. This section will allow you to input
-                    finish positions and calculate scores.
-                  </p>
-                </CardContent>
-              </Card>
+            <TabsContent value="results" className="space-y-6">
+              {!selectedEventId ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-foreground mb-2">Select an Event</h2>
+                    <p className="text-muted-foreground">
+                      Select an event from the Events tab first to enter results.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : classes.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-foreground mb-2">No Classes</h2>
+                    <p className="text-muted-foreground">
+                      Create classes and entries in the Entries tab first.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {/* Selected Event Info */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-semibold text-card-foreground">
+                              {events.find(e => e.id === selectedEventId)?.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Enter finish positions for each class below
+                            </p>
+                          </div>
+                          {allResultsEntered && (
+                            <span className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full">
+                              <Check className="h-4 w-4" /> All results entered
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  {/* Class Tabs for Results Entry */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Enter Results by Class</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Tabs value={resultsClassTab || classes[0]?.id} onValueChange={setResultsClassTab}>
+                          <TabsList className="mb-4">
+                            {classes.map(cls => (
+                              <TabsTrigger key={cls.id} value={cls.id}>
+                                {cls.name}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+
+                          {classes.map(cls => (
+                            <TabsContent key={cls.id} value={cls.id}>
+                              <ResultsEntryForm
+                                classData={cls}
+                                eventId={selectedEventId}
+                                onSave={handleResultsSaved}
+                              />
+                            </TabsContent>
+                          ))}
+                        </Tabs>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  {/* Calculate Scores Button */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Calculator className="h-5 w-5" />
+                          Calculate User Scores
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          After entering all results, calculate scores for all users who made predictions.
+                          This will update the leaderboards.
+                        </p>
+                        {!allResultsEntered && (
+                          <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              Not all results have been entered yet. You can still calculate scores,
+                              but results may be incomplete.
+                            </p>
+                          </div>
+                        )}
+                        <Button
+                          onClick={handleCalculateScores}
+                          disabled={calculating}
+                          size="lg"
+                        >
+                          {calculating ? (
+                            <>
+                              <LoadingSpinner size="sm" />
+                              <span className="ml-2">Calculating...</span>
+                            </>
+                          ) : (
+                            'Calculate All User Scores'
+                          )}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </div>
