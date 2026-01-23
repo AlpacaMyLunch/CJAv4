@@ -105,6 +105,7 @@ interface DraggableEntryCardProps {
   selectedPosition?: number | null
   disabled?: boolean
   onTap?: () => void
+  isTouchDevice?: boolean
   className?: string
 }
 
@@ -113,6 +114,7 @@ export function DraggableEntryCard({
   selectedPosition,
   disabled,
   onTap,
+  isTouchDevice,
   className
 }: DraggableEntryCardProps) {
   const {
@@ -123,7 +125,7 @@ export function DraggableEntryCard({
     isDragging
   } = useDraggable({
     id: entry.id,
-    disabled
+    disabled: disabled || isTouchDevice // Disable dragging on touch devices
   })
 
   const style = transform ? {
@@ -131,6 +133,26 @@ export function DraggableEntryCard({
     zIndex: isDragging ? 50 : undefined,
   } : undefined
 
+  // On touch devices, render a simple tappable card without drag functionality
+  if (isTouchDevice) {
+    return (
+      <div
+        onClick={disabled ? undefined : onTap}
+        className={cn(
+          disabled && 'opacity-50',
+          className
+        )}
+      >
+        <EntryCardContent
+          entry={entry}
+          selectedPosition={selectedPosition}
+          showGrip={false}
+        />
+      </div>
+    )
+  }
+
+  // Desktop: full drag and drop functionality
   return (
     <div
       ref={setNodeRef}

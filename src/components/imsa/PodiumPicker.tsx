@@ -379,6 +379,7 @@ export function PodiumPicker({
                   selectedPosition={assignedPosition}
                   disabled={disabled || saving}
                   onTap={() => handleEntryTap(entry)}
+                  isTouchDevice={isTouchDevice}
                 />
               )
             })}
