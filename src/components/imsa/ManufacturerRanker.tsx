@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
   closestCenter,
   useSensor,
   useSensors,
-  PointerSensor,
-  TouchSensor
+  PointerSensor
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import {
@@ -20,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { type ImsaManufacturer, type ImsaManufacturerPrediction } from '@/lib/supabase'
+import { useIsTouchDevice } from '@/hooks/useIsTouchDevice'
 
 interface ManufacturerRankUpdate {
   manufacturerId: string
@@ -98,6 +98,69 @@ function ManufacturerItemOverlay({ manufacturer, rank }: { manufacturer: ImsaMan
   )
 }
 
+// Mobile-friendly item with up/down buttons
+interface MobileManufacturerItemProps {
+  manufacturer: ImsaManufacturer
+  rank: number
+  isFirst: boolean
+  isLast: boolean
+  disabled?: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
+}
+
+function MobileManufacturerItem({
+  manufacturer,
+  rank,
+  isFirst,
+  isLast,
+  disabled,
+  onMoveUp,
+  onMoveDown
+}: MobileManufacturerItemProps) {
+  return (
+    <Card
+      className={cn(
+        'flex items-center justify-between p-3 bg-primary/5 border-primary/20',
+        disabled && 'opacity-50'
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold bg-primary text-primary-foreground">
+          {rank}
+        </span>
+        <span className="font-medium text-card-foreground">{manufacturer.name}</span>
+      </div>
+      {!disabled && (
+        <div className="flex flex-col gap-0.5">
+          <button
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className={cn(
+              'p-1 rounded hover:bg-muted transition-colors',
+              isFirst ? 'opacity-30 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'
+            )}
+            aria-label="Move up"
+          >
+            <ChevronUp className="h-5 w-5" />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={isLast}
+            className={cn(
+              'p-1 rounded hover:bg-muted transition-colors',
+              isLast ? 'opacity-30 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'
+            )}
+            aria-label="Move down"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export function ManufacturerRanker({
   manufacturers,
   predictions,
@@ -107,18 +170,13 @@ export function ManufacturerRanker({
   className
 }: ManufacturerRankerProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const isTouchDevice = useIsTouchDevice()
 
-  // Configure sensors
+  // Configure sensors - only use PointerSensor on non-touch devices
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8
-      }
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5
       }
     })
   )
@@ -166,6 +224,58 @@ export function ManufacturerRanker({
   const activeManufacturer = activeId ? manufacturers.find(m => m.id === activeId) : null
   const activeRank = activeId ? rankedManufacturers.findIndex(m => m.id === activeId) + 1 : 0
 
+  // Handle moving items up/down for mobile
+  const handleMoveItem = async (index: number, direction: 'up' | 'down') => {
+    if (disabled || saving) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= rankedManufacturers.length) return
+
+    const reordered = arrayMove(rankedManufacturers, index, newIndex)
+
+    const updates: ManufacturerRankUpdate[] = reordered.map((m, i) => ({
+      manufacturerId: m.id,
+      rank: i + 1
+    }))
+
+    await onSavePredictionsBatch(updates)
+  }
+
+  // Render mobile version with up/down buttons
+  if (isTouchDevice) {
+    return (
+      <div className={cn('space-y-3', className)}>
+        {!disabled && (
+          <p className="text-xs text-muted-foreground text-center">
+            Use arrows to reorder
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {rankedManufacturers.map((manufacturer, index) => (
+            <MobileManufacturerItem
+              key={manufacturer.id}
+              manufacturer={manufacturer}
+              rank={index + 1}
+              isFirst={index === 0}
+              isLast={index === rankedManufacturers.length - 1}
+              disabled={disabled || saving}
+              onMoveUp={() => handleMoveItem(index, 'up')}
+              onMoveDown={() => handleMoveItem(index, 'down')}
+            />
+          ))}
+        </div>
+
+        {saving && (
+          <div className="text-center text-sm text-muted-foreground">
+            Saving ranking...
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Desktop version with drag and drop
   return (
     <DndContext
       sensors={sensors}

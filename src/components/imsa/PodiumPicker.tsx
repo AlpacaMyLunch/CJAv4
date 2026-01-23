@@ -6,7 +6,6 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  TouchSensor,
   useDroppable
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
@@ -14,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { type ImsaEntryWithDetails, type ImsaPodiumPrediction } from '@/lib/supabase'
 import { DraggableEntryCard, EntryCardContent } from './EntryCard'
+import { useIsTouchDevice } from '@/hooks/useIsTouchDevice'
 
 interface PodiumUpdate {
   position: number
@@ -184,18 +184,14 @@ export function PodiumPicker({
 }: PodiumPickerProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [mobileSelectEntry, setMobileSelectEntry] = useState<ImsaEntryWithDetails | null>(null)
+  const isTouchDevice = useIsTouchDevice()
 
-  // Configure sensors - require some movement before starting drag
+  // Configure sensors - only use PointerSensor on non-touch devices
+  // On touch devices, we disable DnD entirely to allow normal scrolling
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8, // 8px movement required to start drag
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200, // 200ms delay for touch to differentiate from scroll
-        tolerance: 5,
       },
     })
   )
@@ -336,7 +332,7 @@ export function PodiumPicker({
 
   return (
     <DndContext
-      sensors={sensors}
+      sensors={isTouchDevice ? [] : sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
@@ -357,11 +353,14 @@ export function PodiumPicker({
 
         {/* Instructions */}
         <div className="text-center text-sm text-muted-foreground">
-          <span className="hidden sm:inline">
-            <GripVertical className="inline h-4 w-4 mr-1" />
-            Drag cards to podium positions above
-          </span>
-          <span className="sm:hidden">Tap a card to assign it to a podium position</span>
+          {isTouchDevice ? (
+            <span>Tap a card to assign it to a podium position</span>
+          ) : (
+            <>
+              <GripVertical className="inline h-4 w-4 mr-1" />
+              Drag cards to podium positions above, or click to select
+            </>
+          )}
         </div>
 
         {/* Entry List */}
