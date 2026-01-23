@@ -316,3 +316,217 @@ export type ReviewStatus = 'Perfect Match' | 'Track Match Only' | 'No Match'
  * Rating category types
  */
 export type RatingCategory = 'setup' | 'app'
+
+// ============================================================================
+// IMSA Predictions
+// ============================================================================
+
+/**
+ * IMSA event (race weekend)
+ */
+export type ImsaEvent = {
+  id: string
+  name: string
+  year: number
+  series: string
+  event_type: string
+  track: string
+  green_flag_time: string
+  prediction_deadline: string
+  is_active: boolean
+  created_at: string
+}
+
+/**
+ * IMSA class within an event (e.g., GTP, GTD Pro, GTD)
+ */
+export type ImsaClass = {
+  id: string
+  event_id: string
+  name: string
+  display_order: number
+  has_manufacturer_prediction: boolean
+  created_at: string
+}
+
+/**
+ * IMSA manufacturer competing in a class
+ */
+export type ImsaManufacturer = {
+  id: string
+  event_id: string
+  class_id: string
+  name: string
+  created_at: string
+}
+
+/**
+ * IMSA entry (car/team) in an event
+ */
+export type ImsaEntry = {
+  id: string
+  event_id: string
+  class_id: string
+  manufacturer_id: string
+  car_number: string
+  team_name: string
+  drivers: string[]
+  created_at: string
+}
+
+/**
+ * User's podium prediction for a class
+ */
+export type ImsaPodiumPrediction = {
+  id: string
+  user_id: string
+  event_id: string
+  class_id: string
+  position: number
+  entry_id: string
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * User's manufacturer ranking prediction for a class
+ */
+export type ImsaManufacturerPrediction = {
+  id: string
+  user_id: string
+  event_id: string
+  class_id: string
+  manufacturer_id: string
+  predicted_rank: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Actual finish result for an entry
+ */
+export type ImsaEntryResult = {
+  id: string
+  event_id: string
+  entry_id: string
+  finish_position: number
+  status: 'finished' | 'DNF' | 'DNS' | 'DQ'
+  laps_completed: number | null
+  created_at: string
+}
+
+/**
+ * Calculated manufacturer result for a class
+ */
+export type ImsaManufacturerResult = {
+  id: string
+  event_id: string
+  class_id: string
+  manufacturer_id: string
+  avg_finish_position: number
+  final_rank: number
+  created_at: string
+}
+
+/**
+ * Scoring rules for predictions
+ */
+export type ImsaScoringRule = {
+  id: string
+  category: 'podium' | 'manufacturer'
+  prediction_position: number | null
+  result_type: string
+  points: number
+  description: string | null
+  created_at: string
+}
+
+/**
+ * Aggregated user score for an event
+ */
+export type ImsaUserEventScore = {
+  id: string
+  user_id: string
+  event_id: string
+  podium_points: number
+  manufacturer_points: number
+  total_points: number
+  predictions_made: number
+  created_at: string
+  updated_at: string
+}
+
+// IMSA Leaderboard Views
+
+export type ImsaEventLeaderboardRow = {
+  user_id: string
+  display_name: string | null
+  event_id: string
+  event_name: string
+  year: number
+  podium_points: number
+  manufacturer_points: number
+  total_points: number
+  predictions_made: number
+  rank: number
+}
+
+export type ImsaSeasonLeaderboardRow = {
+  user_id: string
+  display_name: string | null
+  year: number
+  events_participated: number
+  total_podium_points: number
+  total_manufacturer_points: number
+  total_points: number
+  avg_points_per_event: number
+  rank: number
+}
+
+export type ImsaAllTimeLeaderboardRow = {
+  user_id: string
+  display_name: string | null
+  events_participated: number
+  total_podium_points: number
+  total_manufacturer_points: number
+  total_points: number
+  avg_points_per_event: number
+  rank: number
+}
+
+// IMSA Joined/Enriched Types for UI
+
+export type ImsaEntryWithDetails = ImsaEntry & {
+  manufacturer: ImsaManufacturer
+  class: ImsaClass
+}
+
+export type ImsaClassWithEntries = ImsaClass & {
+  entries: ImsaEntryWithDetails[]
+  manufacturers: ImsaManufacturer[]
+}
+
+export type ImsaEventWithClasses = ImsaEvent & {
+  classes: ImsaClassWithEntries[]
+}
+
+// IMSA Insert Types (omit auto-generated fields)
+
+export type ImsaEventInsert = Omit<ImsaEvent, 'id' | 'created_at'>
+export type ImsaClassInsert = Omit<ImsaClass, 'id' | 'created_at'>
+export type ImsaManufacturerInsert = Omit<ImsaManufacturer, 'id' | 'created_at'>
+export type ImsaEntryInsert = Omit<ImsaEntry, 'id' | 'created_at'>
+export type ImsaPodiumPredictionInsert = Omit<ImsaPodiumPrediction, 'id' | 'created_at' | 'updated_at'>
+export type ImsaManufacturerPredictionInsert = Omit<ImsaManufacturerPrediction, 'id' | 'created_at' | 'updated_at'>
+export type ImsaEntryResultInsert = Omit<ImsaEntryResult, 'id' | 'created_at'>
+export type ImsaManufacturerResultInsert = Omit<ImsaManufacturerResult, 'id' | 'created_at'>
+
+// IMSA Update Types
+
+export type ImsaPodiumPredictionUpdate = Partial<Pick<ImsaPodiumPrediction, 'entry_id'>>
+export type ImsaManufacturerPredictionUpdate = Partial<Pick<ImsaManufacturerPrediction, 'predicted_rank'>>
+
+// IMSA Utility Types
+
+export type ImsaEntryStatus = 'finished' | 'DNF' | 'DNS' | 'DQ'
+export type ImsaScoringCategory = 'podium' | 'manufacturer'

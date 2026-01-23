@@ -14,6 +14,9 @@ import { AdminDashboard } from './pages/AdminDashboard'
 import { AdminSetupShops } from './pages/AdminSetupShops'
 import { SetupShopReviews } from './pages/SetupShopReviews'
 import { SetupRecommendations } from './pages/SetupRecommendations'
+import { ImsaPredictions } from './pages/ImsaPredictions'
+import { ImsaLeaderboard } from './pages/ImsaLeaderboard'
+import { AdminImsaEvents } from './pages/AdminImsaEvents'
 import { Placeholder } from './pages/Placeholder'
 import { trackPageView } from './utils/analytics'
 
@@ -72,6 +75,16 @@ function App() {
                       element={
                         <AdminGuard>
                           <AdminSetupShops />
+                        </AdminGuard>
+                      }
+                    />
+                    <Route path="/imsa-predictions" element={<ImsaPredictions />} />
+                    <Route path="/imsa-leaderboard" element={<ImsaLeaderboard />} />
+                    <Route
+                      path="/admin/imsa"
+                      element={
+                        <AdminGuard>
+                          <AdminImsaEvents />
                         </AdminGuard>
                       }
                     />

@@ -24,6 +24,14 @@ const navigationItems: NavigationItem[] = [
       { name: 'Manage', href: '/admin/setup-shops', adminOnly: true },
     ]
   },
+  {
+    name: 'IMSA',
+    children: [
+      { name: 'Predictions', href: '/imsa-predictions' },
+      { name: 'Leaderboard', href: '/imsa-leaderboard' },
+      { name: 'Manage', href: '/admin/imsa', adminOnly: true },
+    ]
+  },
   { name: 'Predictions', href: '/community', adminOnly: true },
   { name: 'Admin', href: '/admin', adminOnly: true },
 ]
