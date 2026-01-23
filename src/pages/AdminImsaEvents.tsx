@@ -304,7 +304,7 @@ function PredictionStats({ eventId, classes }: PredictionStatsProps) {
 
       if (allUserIds.size > 0) {
         const { data: profiles } = await supabase
-          .from('user_profiles')
+          .from('user_profiles_public')
           .select('user_id, display_name')
           .in('user_id', Array.from(allUserIds))
 
