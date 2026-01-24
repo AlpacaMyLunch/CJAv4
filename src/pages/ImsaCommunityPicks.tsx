@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Eye, Grid3X3, Lock, Calendar } from 'lucide-react'
+import { Users, Eye, Grid3X3, Lock, Calendar, BarChart3 } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -299,6 +300,13 @@ export default function ImsaCommunityPicks() {
           </div>
         </motion.div>
 
+        {/* Charts Section */}
+        <ChartSection
+          predictions={userPredictions}
+          classes={classes}
+          selectedClassId={selectedClassId}
+        />
+
         {/* Content */}
         {viewMode === 'by-user' ? (
           <ByUserView
@@ -314,6 +322,225 @@ export default function ImsaCommunityPicks() {
         )}
       </div>
     </div>
+  )
+}
+
+interface ChartSectionProps {
+  predictions: UserPredictions[]
+  classes: ImsaClass[]
+  selectedClassId: string
+}
+
+function ChartSection({ predictions, classes, selectedClassId }: ChartSectionProps) {
+  const filteredClasses = classes.filter(
+    cls => selectedClassId === 'all' || cls.id === selectedClassId
+  )
+
+  // Build podium aggregation
+  const podiumData: Record<string, { position: number; carNumber: string; count: number }[]> = {}
+
+  filteredClasses.forEach(cls => {
+    const classPicks: Record<number, Record<string, number>> = { 1: {}, 2: {}, 3: {} }
+
+    predictions.forEach(user => {
+      const userClassPicks = user.podiumPicks.find(p => p.classId === cls.id)
+      userClassPicks?.picks.forEach(pick => {
+        if (!classPicks[pick.position][pick.carNumber]) {
+          classPicks[pick.position][pick.carNumber] = 0
+        }
+        classPicks[pick.position][pick.carNumber]++
+      })
+    })
+
+    podiumData[cls.id] = []
+    ;[1, 2, 3].forEach(pos => {
+      const sorted = Object.entries(classPicks[pos])
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+      sorted.forEach(([carNum, count]) => {
+        podiumData[cls.id].push({ position: pos, carNumber: carNum, count })
+      })
+    })
+  })
+
+  // Build manufacturer #1 picks aggregation
+  const mfrData: Record<string, { name: string; count: number }[]> = {}
+
+  filteredClasses.filter(cls => cls.has_manufacturer_prediction).forEach(cls => {
+    const rank1Picks: Record<string, number> = {}
+
+    predictions.forEach(user => {
+      const userMfr = user.manufacturerRanks.find(m => m.classId === cls.id)
+      const rank1 = userMfr?.ranks.find(r => r.rank === 1)
+      if (rank1) {
+        if (!rank1Picks[rank1.manufacturerName]) rank1Picks[rank1.manufacturerName] = 0
+        rank1Picks[rank1.manufacturerName]++
+      }
+    })
+
+    mfrData[cls.id] = Object.entries(rank1Picks)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+  })
+
+  // Quick stats
+  const totalPodiumPicks = predictions.reduce(
+    (sum, u) => sum + u.podiumPicks.reduce((s, c) => s + c.picks.length, 0), 0
+  )
+  const totalMfrRanks = predictions.reduce(
+    (sum, u) => sum + u.manufacturerRanks.reduce((s, c) => s + c.ranks.length, 0), 0
+  )
+
+  // Find most popular overall P1 pick
+  let mostPopularP1 = { car: '-', class: '', count: 0 }
+  filteredClasses.forEach(cls => {
+    const p1Picks = podiumData[cls.id]?.filter(p => p.position === 1) || []
+    p1Picks.forEach(pick => {
+      if (pick.count > mostPopularP1.count) {
+        mostPopularP1 = { car: pick.carNumber, class: cls.name, count: pick.count }
+      }
+    })
+  })
+
+  const COLORS = ['#eab308', '#a1a1aa', '#d97706', '#3b82f6', '#8b5cf6', '#ec4899']
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="space-y-6"
+    >
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-4 text-center">
+            <p className="text-3xl font-bold text-primary">{predictions.length}</p>
+            <p className="text-sm text-muted-foreground">Participants</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4 text-center">
+            <p className="text-3xl font-bold text-primary">{totalPodiumPicks}</p>
+            <p className="text-sm text-muted-foreground">Podium Picks</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4 text-center">
+            <p className="text-3xl font-bold text-primary">{totalMfrRanks}</p>
+            <p className="text-sm text-muted-foreground">Manufacturer Ranks</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4 text-center">
+            <p className="text-3xl font-bold text-primary">#{mostPopularP1.car}</p>
+            <p className="text-sm text-muted-foreground">
+              {mostPopularP1.count > 0 ? `Top P1 Pick (${mostPopularP1.class})` : 'No P1 Picks'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* P1 Predictions Charts */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            P1 Predictions by Class
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredClasses.map(cls => {
+              const p1Data = (podiumData[cls.id] || [])
+                .filter(p => p.position === 1)
+                .slice(0, 5)
+                .map(p => ({ name: `#${p.carNumber}`, picks: p.count }))
+
+              return (
+                <div key={cls.id}>
+                  <p className="text-sm font-semibold text-muted-foreground mb-2">{cls.name}</p>
+                  {p1Data.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No predictions</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={140}>
+                      <BarChart data={p1Data} layout="vertical" margin={{ left: 5, right: 15 }}>
+                        <XAxis type="number" allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="name" width={45} fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          formatter={(value: number) => [`${value} picks`, 'Predictions']}
+                          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                        />
+                        <Bar dataKey="picks" radius={[0, 4, 4, 0]}>
+                          {p1Data.map((_, index) => (
+                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Manufacturer Consensus Charts */}
+      {filteredClasses.filter(cls => cls.has_manufacturer_prediction).length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Manufacturer #1 Picks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-6">
+              {filteredClasses
+                .filter(cls => cls.has_manufacturer_prediction)
+                .map(cls => {
+                  const data = (mfrData[cls.id] || []).map(m => ({
+                    name: m.name.length > 12 ? m.name.slice(0, 12) + '…' : m.name,
+                    fullName: m.name,
+                    votes: m.count
+                  }))
+
+                  return (
+                    <div key={cls.id}>
+                      <p className="text-sm font-semibold text-muted-foreground mb-2">{cls.name}</p>
+                      {data.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">No rankings</p>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={data} margin={{ left: 0, right: 10, bottom: 30 }}>
+                            <XAxis
+                              dataKey="name"
+                              fontSize={10}
+                              angle={-35}
+                              textAnchor="end"
+                              height={50}
+                              interval={0}
+                              tickLine={false}
+                            />
+                            <YAxis allowDecimals={false} fontSize={11} width={25} tickLine={false} axisLine={false} />
+                            <Tooltip
+                              formatter={(value: number) => [`${value} votes`]}
+                              labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
+                              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                            />
+                            <Bar dataKey="votes" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  )
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </motion.div>
   )
 }
 
@@ -427,10 +654,28 @@ function ByPositionView({ predictions, selectedClassId, classes }: ByPositionVie
   })
 
   const posLabels: Record<number, string> = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' }
-  const posBg: Record<number, string> = {
-    1: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-    2: 'bg-gray-100 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700',
-    3: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+  const posStyles: Record<number, { bg: string; title: string; text: string; muted: string; badge: string }> = {
+    1: {
+      bg: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+      title: 'text-yellow-900 dark:text-yellow-100',
+      text: 'text-yellow-900 dark:text-yellow-100',
+      muted: 'text-yellow-700 dark:text-yellow-300',
+      badge: 'bg-yellow-200 dark:bg-yellow-800 text-yellow-900 dark:text-yellow-100'
+    },
+    2: {
+      bg: 'bg-gray-100 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700',
+      title: 'text-gray-900 dark:text-gray-100',
+      text: 'text-gray-900 dark:text-gray-100',
+      muted: 'text-gray-600 dark:text-gray-300',
+      badge: 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+    },
+    3: {
+      bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+      title: 'text-amber-900 dark:text-amber-100',
+      text: 'text-amber-900 dark:text-amber-100',
+      muted: 'text-amber-700 dark:text-amber-300',
+      badge: 'bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100'
+    }
   }
 
   return (
@@ -454,23 +699,24 @@ function ByPositionView({ predictions, selectedClassId, classes }: ByPositionVie
                   {[1, 2, 3].map(position => {
                     const picks = podiumAgg[cls.id]?.[position] || {}
                     const sorted = Object.entries(picks).sort((a, b) => b[1].length - a[1].length)
+                    const styles = posStyles[position]
 
                     return (
-                      <div key={position} className={`rounded-lg p-3 border ${posBg[position]}`}>
-                        <p className="font-semibold mb-2">{posLabels[position]}</p>
+                      <div key={position} className={`rounded-lg p-3 border ${styles.bg}`}>
+                        <p className={`font-semibold mb-2 ${styles.title}`}>{posLabels[position]}</p>
                         {sorted.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No picks</p>
+                          <p className={`text-sm ${styles.muted}`}>No picks</p>
                         ) : (
                           <div className="space-y-2">
                             {sorted.map(([carNum, users]) => (
                               <div key={carNum}>
                                 <div className="flex justify-between items-center">
-                                  <span className="font-mono font-semibold">{carNum}</span>
-                                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                                  <span className={`font-mono font-semibold ${styles.text}`}>{carNum}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded ${styles.badge}`}>
                                     {users.length} pick{users.length !== 1 && 's'}
                                   </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
+                                <p className={`text-xs mt-0.5 ${styles.muted}`}>
                                   {users.join(', ')}
                                 </p>
                               </div>
