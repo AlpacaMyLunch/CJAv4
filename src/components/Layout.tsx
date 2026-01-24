@@ -28,6 +28,7 @@ const navigationItems: NavigationItem[] = [
     name: 'IMSA',
     children: [
       { name: 'Predictions', href: '/imsa-predictions' },
+      { name: 'Community Picks', href: '/imsa-predictions/community' },
       { name: 'Leaderboard', href: '/imsa-leaderboard' },
       { name: 'Manage', href: '/admin/imsa', adminOnly: true },
     ]

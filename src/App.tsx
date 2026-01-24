@@ -17,6 +17,7 @@ import { SetupRecommendations } from './pages/SetupRecommendations'
 import { ImsaPredictions } from './pages/ImsaPredictions'
 import { ImsaLeaderboard } from './pages/ImsaLeaderboard'
 import { AdminImsaEvents } from './pages/AdminImsaEvents'
+import ImsaCommunityPicks from './pages/ImsaCommunityPicks'
 import { Placeholder } from './pages/Placeholder'
 import { trackPageView } from './utils/analytics'
 
@@ -79,6 +80,7 @@ function App() {
                       }
                     />
                     <Route path="/imsa-predictions" element={<ImsaPredictions />} />
+                    <Route path="/imsa-predictions/community" element={<ImsaCommunityPicks />} />
                     <Route path="/imsa-leaderboard" element={<ImsaLeaderboard />} />
                     <Route
                       path="/admin/imsa"
