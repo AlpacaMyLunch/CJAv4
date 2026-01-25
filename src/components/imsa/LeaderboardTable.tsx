@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Crown, Medal, Trophy, Users, ChevronDown, ChevronUp } from 'lucide-react'
+import { Crown, Medal, Trophy, Users, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -63,7 +63,7 @@ export function LeaderboardTable({
   className,
   onUserClick
 }: LeaderboardTableProps) {
-  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  // const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const defaultTitles: Record<string, string> = {
     'event': 'Event Leaderboard',
     'season': 'Season Leaderboard',
@@ -156,7 +156,7 @@ export function LeaderboardTable({
                 const eventsCount = 'events_participated' in row ? row.events_participated : null
                 const avgPts = 'avg_points_per_event' in row ? row.avg_points_per_event : null
                 const styles = getRowStyles(row.rank, isCurrentUser)
-                const isExpanded = expandedUserId === row.user_id
+                // const isExpanded = expandedUserId === row.user_id
                 const isClickable = !!onUserClick
 
                 return (
