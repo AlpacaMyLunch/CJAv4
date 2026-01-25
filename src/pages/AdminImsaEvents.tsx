@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Settings, Plus, Check, AlertCircle, Calculator, Users, BarChart3 } from 'lucide-react'
+import { Settings, Plus, Check, AlertCircle, Calculator, Users, BarChart3, Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type {
   ImsaClassInsert,
@@ -17,6 +17,7 @@ import { AdminGuard } from '@/components/AdminGuard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { showSuccessToast, showErrorToast } from '@/utils/toast'
 import { calculateImsaScores } from '@/utils/calculateImsaScores'
@@ -918,6 +919,8 @@ export function AdminImsaEvents() {
     )
   }
 
+  const selectedEvent = events.find(e => e.id === selectedEventId)
+
   return (
     <AdminGuard>
       <div className="min-h-screen bg-background py-8">
@@ -926,23 +929,82 @@ export function AdminImsaEvents() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
+            className="mb-6"
           >
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Settings className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">IMSA Admin</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Settings className="h-8 w-8 text-primary" />
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">IMSA Admin</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Manage events, entries, and results
+                  </p>
+                </div>
+              </div>
+
+              {/* Event Selector */}
+              {events.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <Select
+                    value={selectedEventId || ''}
+                    onValueChange={(value) => setSelectedEventId(value)}
+                  >
+                    <SelectTrigger className="w-[280px]">
+                      <SelectValue placeholder="Select an event to manage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map(event => (
+                        <SelectItem key={event.id} value={event.id}>
+                          <span className="flex items-center gap-2">
+                            {event.name} ({event.year})
+                            {event.is_active && (
+                              <span className="text-xs text-green-600 dark:text-green-400">Active</span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
-            <p className="text-muted-foreground">
-              Manage events, entries, and results
-            </p>
+
+            {/* Selected Event Info Bar */}
+            {selectedEvent && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-3 bg-secondary rounded-lg flex flex-wrap items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="font-semibold text-foreground">{selectedEvent.name}</p>
+                    <p className="text-sm text-muted-foreground">{selectedEvent.track}</p>
+                  </div>
+                  {selectedEvent.is_active && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
+                      <Check className="h-3 w-3" /> Active
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleActive(selectedEvent.id, selectedEvent.is_active)}
+                >
+                  {selectedEvent.is_active ? 'Deactivate' : 'Activate'}
+                </Button>
+              </motion.div>
+            )}
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="events">Events</TabsTrigger>
-              <TabsTrigger value="entries">Entries</TabsTrigger>
-              <TabsTrigger value="predictions">Predictions</TabsTrigger>
-              <TabsTrigger value="results">Results</TabsTrigger>
+              <TabsTrigger value="entries" disabled={!selectedEventId}>Entries</TabsTrigger>
+              <TabsTrigger value="predictions" disabled={!selectedEventId}>Predictions</TabsTrigger>
+              <TabsTrigger value="results" disabled={!selectedEventId}>Results</TabsTrigger>
             </TabsList>
 
             {/* Events Tab */}
@@ -1035,12 +1097,11 @@ export function AdminImsaEvents() {
                         {events.map(event => (
                           <div
                             key={event.id}
-                            className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${
+                            className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
                               selectedEventId === event.id
                                 ? 'border-primary bg-primary/5'
-                                : 'border-border'
+                                : 'border-border hover:bg-muted/30'
                             }`}
-                            onClick={() => setSelectedEventId(event.id)}
                           >
                             <div className="flex-1">
                               <p className="font-medium text-card-foreground flex items-center gap-2">
@@ -1053,16 +1114,24 @@ export function AdminImsaEvents() {
                               </p>
                               <p className="text-sm text-muted-foreground">{event.track}</p>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleToggleActive(event.id, event.is_active)
-                              }}
-                            >
-                              {event.is_active ? 'Deactivate' : 'Activate'}
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              {selectedEventId !== event.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedEventId(event.id)}
+                                >
+                                  Select
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleActive(event.id, event.is_active)}
+                              >
+                                {event.is_active ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1077,7 +1146,7 @@ export function AdminImsaEvents() {
               {!selectedEventId ? (
                 <Card>
                   <CardContent className="py-12 text-center text-muted-foreground">
-                    Select an event from the Events tab first
+                    Select an event from the dropdown above
                   </CardContent>
                 </Card>
               ) : (
@@ -1207,7 +1276,7 @@ export function AdminImsaEvents() {
                     <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h2 className="text-xl font-semibold text-foreground mb-2">Select an Event</h2>
                     <p className="text-muted-foreground">
-                      Select an event from the Events tab first to view prediction statistics.
+                      Select an event from the dropdown above to view prediction statistics.
                     </p>
                   </CardContent>
                 </Card>
@@ -1234,7 +1303,7 @@ export function AdminImsaEvents() {
                     <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h2 className="text-xl font-semibold text-foreground mb-2">Select an Event</h2>
                     <p className="text-muted-foreground">
-                      Select an event from the Events tab first to enter results.
+                      Select an event from the dropdown above to enter results.
                     </p>
                   </CardContent>
                 </Card>
