@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   supabase,
   type ImsaEventLeaderboardRow,
@@ -24,7 +24,7 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchEventLeaderboard = async (eventId: string) => {
+  const fetchEventLeaderboard = useCallback(async (eventId: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -45,9 +45,9 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const fetchSeasonLeaderboard = async (year: number) => {
+  const fetchSeasonLeaderboard = useCallback(async (year: number) => {
     try {
       setLoading(true)
       setError(null)
@@ -68,9 +68,9 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const fetchAllTimeLeaderboard = async () => {
+  const fetchAllTimeLeaderboard = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -90,7 +90,7 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   return {
     eventLeaderboard,

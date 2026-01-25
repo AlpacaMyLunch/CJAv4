@@ -1,4 +1,5 @@
-import { Crown, Medal, Trophy, Users } from 'lucide-react'
+import { useState } from 'react'
+import { Crown, Medal, Trophy, Users, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -17,6 +18,7 @@ interface LeaderboardTableProps {
   loading?: boolean
   currentUserId?: string
   className?: string
+  onUserClick?: (userId: string, displayName: string) => void
 }
 
 function getRankIcon(rank: number) {
@@ -26,14 +28,30 @@ function getRankIcon(rank: number) {
   return <span className="text-sm font-semibold text-muted-foreground">#{rank}</span>
 }
 
-function getRowBg(rank: number, isCurrentUser: boolean) {
+function getRowStyles(rank: number, isCurrentUser: boolean) {
   if (isCurrentUser) {
-    return 'bg-primary/10 border-l-4 border-l-primary'
+    return {
+      bg: 'bg-primary/10 border-l-4 border-l-primary',
+      text: 'text-foreground',
+      muted: 'text-muted-foreground'
+    }
   }
-  if (rank === 1) return 'bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-900/20'
-  if (rank === 2) return 'bg-gradient-to-r from-gray-50 to-transparent dark:from-gray-800/20'
-  if (rank === 3) return 'bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-900/20'
-  return ''
+  if (rank === 1) return {
+    bg: 'bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-900/20',
+    text: 'text-yellow-900 dark:text-yellow-100',
+    muted: 'text-yellow-700 dark:text-yellow-300'
+  }
+  if (rank === 2) return {
+    bg: 'bg-gradient-to-r from-gray-100 to-transparent dark:from-gray-800/30',
+    text: 'text-gray-900 dark:text-gray-100',
+    muted: 'text-gray-600 dark:text-gray-300'
+  }
+  if (rank === 3) return {
+    bg: 'bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-900/20',
+    text: 'text-amber-900 dark:text-amber-100',
+    muted: 'text-amber-700 dark:text-amber-300'
+  }
+  return { bg: '', text: 'text-card-foreground', muted: 'text-muted-foreground' }
 }
 
 export function LeaderboardTable({
@@ -42,8 +60,10 @@ export function LeaderboardTable({
   title,
   loading,
   currentUserId,
-  className
+  className,
+  onUserClick
 }: LeaderboardTableProps) {
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const defaultTitles: Record<string, string> = {
     'event': 'Event Leaderboard',
     'season': 'Season Leaderboard',
@@ -135,13 +155,18 @@ export function LeaderboardTable({
                 const mfrPts = 'manufacturer_points' in row ? row.manufacturer_points : row.total_manufacturer_points
                 const eventsCount = 'events_participated' in row ? row.events_participated : null
                 const avgPts = 'avg_points_per_event' in row ? row.avg_points_per_event : null
+                const styles = getRowStyles(row.rank, isCurrentUser)
+                const isExpanded = expandedUserId === row.user_id
+                const isClickable = !!onUserClick
 
                 return (
                   <tr
                     key={row.user_id}
+                    onClick={isClickable ? () => onUserClick(row.user_id, row.display_name || 'Unknown') : undefined}
                     className={cn(
-                      'transition-colors hover:bg-muted/30',
-                      getRowBg(row.rank, isCurrentUser)
+                      'transition-colors',
+                      styles.bg,
+                      isClickable && 'cursor-pointer hover:bg-muted/30'
                     )}
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -150,34 +175,39 @@ export function LeaderboardTable({
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={cn(
-                        'text-sm font-medium',
-                        isCurrentUser ? 'text-primary font-semibold' : 'text-card-foreground'
-                      )}>
-                        {row.display_name || 'Unknown'}
-                        {isCurrentUser && (
-                          <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                            You
-                          </span>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          'text-sm font-medium',
+                          isCurrentUser ? 'text-primary font-semibold' : styles.text
+                        )}>
+                          {row.display_name || 'Unknown'}
+                          {isCurrentUser && (
+                            <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
+                              You
+                            </span>
+                          )}
+                        </span>
+                        {isClickable && (
+                          <ChevronDown className={cn('h-4 w-4', styles.muted)} />
                         )}
-                      </span>
+                      </div>
                     </td>
                     {showEventsColumn && (
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-muted-foreground">
+                      <td className={cn('px-4 py-3 whitespace-nowrap text-sm text-center', styles.muted)}>
                         {eventsCount}
                       </td>
                     )}
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-muted-foreground">
+                    <td className={cn('px-4 py-3 whitespace-nowrap text-sm text-center', styles.muted)}>
                       {podiumPts}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-muted-foreground">
+                    <td className={cn('px-4 py-3 whitespace-nowrap text-sm text-center', styles.muted)}>
                       {mfrPts}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-semibold text-card-foreground">
+                    <td className={cn('px-4 py-3 whitespace-nowrap text-sm text-center font-semibold', styles.text)}>
                       {row.total_points}
                     </td>
                     {showAvgColumn && avgPts !== null && (
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-muted-foreground">
+                      <td className={cn('px-4 py-3 whitespace-nowrap text-sm text-center', styles.muted)}>
                         {typeof avgPts === 'number' ? avgPts.toFixed(1) : avgPts}
                       </td>
                     )}

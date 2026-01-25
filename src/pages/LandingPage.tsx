@@ -2,19 +2,26 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
+import { useSeasonData } from '@/hooks/useSeasonData'
 import { Trophy, Users, Target } from 'lucide-react'
 
 export function LandingPage() {
   const { isAuthenticated, isAdmin, signInWithDiscord } = useAuth()
+  const { season } = useSeasonData()
+
+  // Check if Nostradouglas predictions are still open
+  const isNostradouglasOpen = season?.prediction_deadline
+    ? new Date() < new Date(season.prediction_deadline)
+    : false
 
   const features = [
     {
       title: 'Nostradouglas',
       description: 'Think you can predict the CJA season schedule? Put your crystal ball to the test and see if you can outsmart the Admins.',
       href: '/nostradouglas',
-      status: 'active',
+      status: isNostradouglasOpen ? 'active' : 'closed',
       icon: Target,
-      highlight: 'Live Now',
+      highlight: isNostradouglasOpen ? 'Live Now' : 'Predictions Closed',
       showAlways: true
     },
     {
@@ -97,8 +104,10 @@ export function LandingPage() {
                 <Card key={feature.title} className="relative group hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 ease-out hover:scale-[1.02] cursor-pointer bg-card/50 backdrop-blur-sm">
                   <div className="absolute top-4 right-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      feature.status === 'active' 
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                      feature.status === 'active'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : feature.status === 'closed'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                         : feature.status === 'admin-only'
                         ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                         : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
@@ -122,10 +131,14 @@ export function LandingPage() {
                   </CardHeader>
                   
                   <CardContent className="pt-0">
-                    {(feature.status === 'active' || feature.status === 'admin-only') && feature.href !== '#' ? (
+                    {(feature.status === 'active' || feature.status === 'closed' || feature.status === 'admin-only') && feature.href !== '#' ? (
                       <Link to={feature.href}>
                         <Button className="w-full text-base py-3 group-hover:bg-primary/90 transition-all duration-300">
-                          {feature.title === 'Nostradouglas' ? '🔮 Make Predictions' : feature.title === 'Community Hub' ? '💬 Join the Discussion' : 'Explore Now'}
+                          {feature.title === 'Nostradouglas'
+                            ? (feature.status === 'closed' ? '🏆 View Results' : '🔮 Make Predictions')
+                            : feature.title === 'Community Hub'
+                            ? '💬 Join the Discussion'
+                            : 'Explore Now'}
                         </Button>
                       </Link>
                     ) : (
