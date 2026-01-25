@@ -146,9 +146,15 @@ function ResultsEntryForm({ classData, eventId, onSave }: ResultsEntryFormProps)
               }`}
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <span className="font-mono font-bold w-12 shrink-0">#{entry.car_number}</span>
-                <span className="text-sm truncate">{entry.team_name}</span>
-                <span className="text-xs text-muted-foreground hidden sm:inline">
+                <span className={`font-mono font-bold w-12 shrink-0 ${
+                  hasResult ? 'text-green-900 dark:text-green-100' : ''
+                }`}>#{entry.car_number}</span>
+                <span className={`text-sm truncate ${
+                  hasResult ? 'text-green-800 dark:text-green-100' : ''
+                }`}>{entry.team_name}</span>
+                <span className={`text-xs hidden sm:inline ${
+                  hasResult ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'
+                }`}>
                   ({entry.manufacturer.name})
                 </span>
               </div>
