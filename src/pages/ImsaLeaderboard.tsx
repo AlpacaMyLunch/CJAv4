@@ -260,10 +260,14 @@ function UserDetailModal({ userId, displayName, eventId, eventName, onClose }: U
 
               {/* Podium Predictions */}
               <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
                   <Target className="h-4 w-4" />
                   Podium Predictions
                 </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Points awarded for predicting class podium finishers. Exact position match earns the most,
+                  followed by correct podium placement (P1-P3) in wrong spot, then top 5 finishes.
+                </p>
                 {Object.entries(podiumByClass).map(([className, predictions]) => (
                   <div key={className} className="mb-4">
                     <p className="text-sm font-medium text-muted-foreground mb-2">{className}</p>
@@ -306,10 +310,14 @@ function UserDetailModal({ userId, displayName, eventId, eventName, onClose }: U
               {/* Manufacturer Predictions */}
               {Object.keys(mfrByClass).length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
                     <Trophy className="h-4 w-4" />
                     Manufacturer Rankings
                   </h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Points for predicting manufacturer standings within each class. Exact rank match earns
+                    the most, with partial points for being off by 1 or 2 positions.
+                  </p>
                   {Object.entries(mfrByClass).map(([className, predictions]) => (
                     <div key={className} className="mb-4">
                       <p className="text-sm font-medium text-muted-foreground mb-2">{className}</p>
