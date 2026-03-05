@@ -25,6 +25,12 @@ const navigationItems: NavigationItem[] = [
     ]
   },
   {
+    name: 'ACC',
+    children: [
+      { name: 'Race Results Generator', href: '/acc/race-results' },
+    ]
+  },
+  {
     name: 'IMSA',
     children: [
       { name: 'Predictions', href: '/imsa-predictions' },

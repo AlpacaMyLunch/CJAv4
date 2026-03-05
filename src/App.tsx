@@ -19,6 +19,7 @@ import { ImsaLeaderboard } from './pages/ImsaLeaderboard'
 import { AdminImsaEvents } from './pages/AdminImsaEvents'
 import ImsaCommunityPicks from './pages/ImsaCommunityPicks'
 import { Placeholder } from './pages/Placeholder'
+import { RaceResultsGenerator } from './pages/RaceResultsGenerator'
 import { trackPageView } from './utils/analytics'
 
 // Component to track page views
@@ -79,6 +80,7 @@ function App() {
                         </AdminGuard>
                       }
                     />
+                    <Route path="/acc/race-results" element={<RaceResultsGenerator />} />
                     <Route path="/imsa-predictions" element={<ImsaPredictions />} />
                     <Route path="/imsa-predictions/community" element={<ImsaCommunityPicks />} />
                     <Route path="/imsa-leaderboard" element={<ImsaLeaderboard />} />
