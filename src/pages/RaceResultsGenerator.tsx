@@ -122,7 +122,7 @@ function transformSessionFile(original: string): string {
 function addOneHour(isoDate: string): string {
   const d = new Date(isoDate)
   d.setUTCHours(d.getUTCHours() + 1)
-  return d.toISOString()
+  return d.toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
 // --- Sortable Row ---
@@ -448,20 +448,18 @@ export function RaceResultsGenerator() {
       }
     })
 
-    // Build laps array: interleaved by lap number
-    const maxLaps = Math.max(...included.map((d) => d.lapCount), 0)
+    // Build laps array: grouped by driver in finishing order
     const laps: unknown[] = []
-    for (let lap = 0; lap < maxLaps; lap++) {
-      for (const entry of included) {
-        if (lap < entry.lapCount) {
-          laps.push({
-            carId: entry.car.carId,
-            driverIndex: 0,
-            isValidForBest: true,
-            laptime: entry.s1 + entry.s2 + entry.s3,
-            splits: [entry.s1, entry.s2, entry.s3],
-          })
-        }
+    for (const entry of included) {
+      const laptime = entry.s1 + entry.s2 + entry.s3
+      for (let lap = 0; lap < entry.lapCount; lap++) {
+        laps.push({
+          carId: entry.car.carId,
+          driverIndex: 0,
+          isValidForBest: true,
+          laptime,
+          splits: [entry.s1, entry.s2, entry.s3],
+        })
       }
     }
     result.laps = laps
