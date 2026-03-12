@@ -37,19 +37,19 @@ function getRowStyles(rank: number, isCurrentUser: boolean) {
     }
   }
   if (rank === 1) return {
-    bg: 'bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-900/20',
-    text: 'text-yellow-900 dark:text-yellow-100',
-    muted: 'text-yellow-700 dark:text-yellow-300'
+    bg: 'bg-yellow-50/50 dark:bg-yellow-900/10',
+    text: 'text-foreground',
+    muted: 'text-muted-foreground'
   }
   if (rank === 2) return {
-    bg: 'bg-gradient-to-r from-gray-100 to-transparent dark:from-gray-800/30',
-    text: 'text-gray-900 dark:text-gray-100',
-    muted: 'text-gray-600 dark:text-gray-300'
+    bg: 'bg-gray-50/50 dark:bg-gray-800/10',
+    text: 'text-foreground',
+    muted: 'text-muted-foreground'
   }
   if (rank === 3) return {
-    bg: 'bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-900/20',
-    text: 'text-amber-900 dark:text-amber-100',
-    muted: 'text-amber-700 dark:text-amber-300'
+    bg: 'bg-amber-50/50 dark:bg-amber-900/10',
+    text: 'text-foreground',
+    muted: 'text-muted-foreground'
   }
   return { bg: '', text: 'text-card-foreground', muted: 'text-muted-foreground' }
 }
