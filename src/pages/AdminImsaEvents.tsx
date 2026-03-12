@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Settings, Plus, Check, AlertCircle, Calculator, Users, BarChart3, Calendar } from 'lucide-react'
+import { Settings, Plus, Check, AlertCircle, Calculator, Users, BarChart3, Calendar, Pencil, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type {
   ImsaClassInsert,
@@ -708,6 +708,31 @@ export function AdminImsaEvents() {
     prediction_deadline: ''
   })
 
+  // Edit event state
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [editEvent, setEditEvent] = useState({
+    name: '',
+    year: new Date().getFullYear(),
+    track: '',
+    green_flag_time: '',
+    prediction_deadline: ''
+  })
+
+  const startEditing = (event: typeof events[0]) => {
+    setEditingEventId(event.id)
+    setEditEvent({
+      name: event.name,
+      year: event.year,
+      track: event.track,
+      green_flag_time: event.green_flag_time ? event.green_flag_time.slice(0, 16) : '',
+      prediction_deadline: event.prediction_deadline ? event.prediction_deadline.slice(0, 16) : ''
+    })
+  }
+
+  const cancelEditing = () => {
+    setEditingEventId(null)
+  }
+
   // Bulk entry paste state
   const [bulkEntryData, setBulkEntryData] = useState('')
 
@@ -753,6 +778,40 @@ export function AdminImsaEvents() {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create event'
+      showErrorToast(addToast, message)
+    }
+
+    setSaving(false)
+  }
+
+  // Update existing event
+  const handleUpdateEvent = async () => {
+    if (!editingEventId || !editEvent.name.trim()) {
+      showErrorToast(addToast, 'Event name is required')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('imsa_events')
+        .update({
+          name: editEvent.name,
+          year: editEvent.year,
+          track: editEvent.track,
+          green_flag_time: editEvent.green_flag_time || new Date().toISOString(),
+          prediction_deadline: editEvent.prediction_deadline || new Date().toISOString()
+        })
+        .eq('id', editingEventId)
+
+      if (updateError) throw updateError
+
+      showSuccessToast(addToast, `Event "${editEvent.name}" updated successfully!`)
+      setEditingEventId(null)
+      refetchEvents()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update event'
       showErrorToast(addToast, message)
     }
 
@@ -1103,41 +1162,124 @@ export function AdminImsaEvents() {
                         {events.map(event => (
                           <div
                             key={event.id}
-                            className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                            className={`p-4 rounded-lg border transition-all ${
                               selectedEventId === event.id
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border hover:bg-muted/30'
                             }`}
                           >
-                            <div className="flex-1">
-                              <p className="font-medium text-card-foreground flex items-center gap-2">
-                                {event.name} ({event.year})
-                                {event.is_active && (
-                                  <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                    <Check className="h-3 w-3" /> Active
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-sm text-muted-foreground">{event.track}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {selectedEventId !== event.id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setSelectedEventId(event.id)}
-                                >
-                                  Select
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleActive(event.id, event.is_active)}
-                              >
-                                {event.is_active ? 'Deactivate' : 'Activate'}
-                              </Button>
-                            </div>
+                            {editingEventId === event.id ? (
+                              /* Edit Form */
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-medium text-card-foreground flex items-center gap-2">
+                                    <Pencil className="h-4 w-4" /> Editing Event
+                                  </p>
+                                  <Button variant="ghost" size="sm" onClick={cancelEditing}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Event Name</label>
+                                    <input
+                                      type="text"
+                                      value={editEvent.name}
+                                      onChange={(e) => setEditEvent(prev => ({ ...prev, name: e.target.value }))}
+                                      className="w-full p-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Year</label>
+                                    <input
+                                      type="number"
+                                      value={editEvent.year}
+                                      onChange={(e) => setEditEvent(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+                                      className="w-full p-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Track</label>
+                                    <input
+                                      type="text"
+                                      value={editEvent.track}
+                                      onChange={(e) => setEditEvent(prev => ({ ...prev, track: e.target.value }))}
+                                      className="w-full p-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Green Flag (UTC)</label>
+                                    <input
+                                      type="datetime-local"
+                                      value={editEvent.green_flag_time}
+                                      onChange={(e) => setEditEvent(prev => ({ ...prev, green_flag_time: e.target.value }))}
+                                      className="w-full p-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </div>
+                                  <div className="space-y-2 md:col-span-2">
+                                    <label className="text-sm font-medium text-foreground">Prediction Deadline (UTC)</label>
+                                    <input
+                                      type="datetime-local"
+                                      value={editEvent.prediction_deadline}
+                                      onChange={(e) => setEditEvent(prev => ({ ...prev, prediction_deadline: e.target.value }))}
+                                      className="w-full p-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button onClick={handleUpdateEvent} disabled={saving || !editEvent.name}>
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                  </Button>
+                                  <Button variant="outline" onClick={cancelEditing}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Display Row */
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium text-card-foreground flex items-center gap-2">
+                                    {event.name} ({event.year})
+                                    {event.is_active && (
+                                      <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                        <Check className="h-3 w-3" /> Active
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">{event.track}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Green Flag: {new Date(event.green_flag_time).toLocaleString()} · Deadline: {new Date(event.prediction_deadline).toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => startEditing(event)}
+                                    title="Edit event"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  {selectedEventId !== event.id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedEventId(event.id)}
+                                    >
+                                      Select
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleToggleActive(event.id, event.is_active)}
+                                  >
+                                    {event.is_active ? 'Deactivate' : 'Activate'}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
