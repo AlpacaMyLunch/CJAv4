@@ -54,7 +54,9 @@ export default function ImsaCommunityPicks() {
         .from('imsa_events')
         .select('*')
         .eq('is_active', true)
-        .single()
+        .order('green_flag_time', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       if (!eventData) {
         setLoading(false)
