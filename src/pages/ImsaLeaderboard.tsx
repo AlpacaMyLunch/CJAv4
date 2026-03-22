@@ -397,22 +397,20 @@ export function ImsaLeaderboard() {
 
   // Fetch data when selections change
   useEffect(() => {
-    if (activeTab === 'event' && selectedEventId) {
+    if (selectedEventId) {
       fetchEventLeaderboard(selectedEventId)
     }
-  }, [activeTab, selectedEventId, fetchEventLeaderboard])
+  }, [selectedEventId, fetchEventLeaderboard])
 
   useEffect(() => {
-    if (activeTab === 'season' && selectedYear) {
+    if (selectedYear) {
       fetchSeasonLeaderboard(selectedYear)
     }
-  }, [activeTab, selectedYear, fetchSeasonLeaderboard])
+  }, [selectedYear, fetchSeasonLeaderboard])
 
   useEffect(() => {
-    if (activeTab === 'all-time') {
-      fetchAllTimeLeaderboard()
-    }
-  }, [activeTab, fetchAllTimeLeaderboard])
+    fetchAllTimeLeaderboard()
+  }, [fetchAllTimeLeaderboard])
 
   // Reset event selection when year changes
   useEffect(() => {

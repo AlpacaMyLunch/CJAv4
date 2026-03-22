@@ -21,12 +21,14 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
   const [eventLeaderboard, setEventLeaderboard] = useState<ImsaEventLeaderboardRow[]>([])
   const [seasonLeaderboard, setSeasonLeaderboard] = useState<ImsaSeasonLeaderboardRow[]>([])
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<ImsaAllTimeLeaderboardRow[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loadingEvent, setLoadingEvent] = useState(false)
+  const [loadingSeason, setLoadingSeason] = useState(false)
+  const [loadingAllTime, setLoadingAllTime] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchEventLeaderboard = useCallback(async (eventId: string) => {
     try {
-      setLoading(true)
+      setLoadingEvent(true)
       setError(null)
 
       const { data, error: fetchError } = await supabase
@@ -43,13 +45,13 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setLoading(false)
+      setLoadingEvent(false)
     }
   }, [])
 
   const fetchSeasonLeaderboard = useCallback(async (year: number) => {
     try {
-      setLoading(true)
+      setLoadingSeason(true)
       setError(null)
 
       const { data, error: fetchError } = await supabase
@@ -66,13 +68,13 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setLoading(false)
+      setLoadingSeason(false)
     }
   }, [])
 
   const fetchAllTimeLeaderboard = useCallback(async () => {
     try {
-      setLoading(true)
+      setLoadingAllTime(true)
       setError(null)
 
       const { data, error: fetchError } = await supabase
@@ -88,7 +90,7 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setLoading(false)
+      setLoadingAllTime(false)
     }
   }, [])
 
@@ -96,7 +98,7 @@ export function useImsaLeaderboards(): UseImsaLeaderboardsReturn {
     eventLeaderboard,
     seasonLeaderboard,
     allTimeLeaderboard,
-    loading,
+    loading: loadingEvent || loadingSeason || loadingAllTime,
     error,
     fetchEventLeaderboard,
     fetchSeasonLeaderboard,
