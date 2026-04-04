@@ -183,7 +183,9 @@ function ComparisonCategory({
       currentParent = param.label
       rows.push({ param, parentLabel: '', isHeader: true })
     } else {
-      rows.push({ param, parentLabel: currentParent, isHeader: false })
+      const isChild = param.label.startsWith('  ')
+      rows.push({ param, parentLabel: isChild ? currentParent : '', isHeader: false })
+      if (!isChild) currentParent = ''
     }
   }
 
@@ -314,14 +316,17 @@ function SummaryPanel({ categories }: { categories: SetupCategory[] }) {
         currentParent = param.label
         continue
       }
+      const isChild = param.label.startsWith('  ')
+      if (!isChild) currentParent = ''
       if (param.diff === 'higher' || param.diff === 'lower') {
+        const parentForLookup = isChild ? currentParent : ''
         const tip = getTipForParameter(
-          cat.name, currentParent, param.label, param.diff,
+          cat.name, parentForLookup, param.label, param.diff,
           param.baseline?.numeric, param.compare?.numeric,
         )
         if (tip) {
-          const displayLabel = currentParent
-            ? `${currentParent} ${param.label.trim()}`
+          const displayLabel = parentForLookup
+            ? `${parentForLookup} ${param.label.trim()}`
             : param.label.trim()
           allDiffs.push({ category: cat.name, label: displayLabel, tip, diff: param.diff })
         }

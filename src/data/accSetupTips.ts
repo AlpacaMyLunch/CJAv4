@@ -183,10 +183,8 @@ interface TipMapping {
 
 const parameterTipMap: Record<string, TipMapping> = {
   // Tyres & Alignment — pressures share one tip
-  'Tyres & Alignment:Tyre Pressure:  FL': { category: 'Tyres & Alignment', tipKey: 'Tyre Pressure' },
-  'Tyres & Alignment:Tyre Pressure:  FR': { category: 'Tyres & Alignment', tipKey: 'Tyre Pressure' },
-  'Tyres & Alignment:Tyre Pressure:  RL': { category: 'Tyres & Alignment', tipKey: 'Tyre Pressure' },
-  'Tyres & Alignment:Tyre Pressure:  RR': { category: 'Tyres & Alignment', tipKey: 'Tyre Pressure' },
+  'Tyres & Alignment:Tyre Pressure:  Front': { category: 'Tyres & Alignment', tipKey: 'Tyre Pressure' },
+  'Tyres & Alignment:Tyre Pressure:  Rear': { category: 'Tyres & Alignment', tipKey: 'Tyre Pressure' },
   'Tyres & Alignment:Toe:  Front': { category: 'Tyres & Alignment', tipKey: 'Toe Front' },
   'Tyres & Alignment:Toe:  Rear': { category: 'Tyres & Alignment', tipKey: 'Toe Rear' },
   'Tyres & Alignment:Camber:  Front': { category: 'Tyres & Alignment', tipKey: 'Camber Front' },
