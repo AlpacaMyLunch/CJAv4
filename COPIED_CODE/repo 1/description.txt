@@ -1,0 +1,13 @@
+
+src/config/config.json — this is where all the descriptive text lives.
+The file has two layers of descriptions baked directly into it as string values:
+Section-level descriptions (6 total, one per setup tab): "Tyres", "Electronics", "Mechanical grip", "Aero", "Dampers", and "Strategy" each have a "description" field containing a paragraph of explanatory text about that whole category of settings.
+Per-field metadata (in the "cars" and "valueSelector" sub-sections): each individual parameter (like tyrePressure, f_toe, r_camber, tC1, rearWing, etc.) has a "description" property alongside its min/max range and unit label. This is what gets shown when you hover/click on an individual control.
+
+src/components/ValueSelectorComponent/ValueSelectorComponent.js — this is the component that reads and triggers those per-field descriptions.
+On line 3 it imports configData from config.json. On line 27 it reads const description = carConfig[type].description to grab the description for whichever parameter it's rendering. The find tool confirmed that the description is then passed to changeDescription via an onMouseEnter event handler in the JSX — so hovering over a setting fires it.
+
+src/components/PanelGroupComponent/PanelGroupComponent.js — this manages the section-level descriptions.
+It also imports configData directly from config.json (line 8), initializes sectionDescription state from configData.sections.Tyres.description (line 27), and defines the changeDescription function (lines 32–35) that both updates the displayed item description and gets passed down through PanelComponent → ValueSelectorComponent.
+
+So in short: src/config/config.json holds all the actual text, and ValueSelectorComponent.js + PanelGroupComponent.js are responsible for reading it and displaying it in the UI.

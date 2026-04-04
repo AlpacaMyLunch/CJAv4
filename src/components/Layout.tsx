@@ -28,6 +28,7 @@ const navigationItems: NavigationItem[] = [
     name: 'ACC',
     children: [
       { name: 'Race Results Generator', href: '/acc/race-results' },
+      { name: 'Setup Compare', href: '/acc/setup-compare' },
     ]
   },
   {

@@ -1,0 +1,27 @@
+Files to Feed Claude Code
+Core Files (Most Relevant — Feed These First)
+src/App.js — This is the heart of the tool and the most important file. It contains everything you need to understand and adapt:
+
+loadSetup(file) — reads an ACC .json setup file using the FileReader API and parses it. This is directly reusable.
+FileSelector component — a simple file <input> wrapper. You'll likely want to enhance this with drag-and-drop.
+DiffItem, DiffRow, DiffSection — the diff display components. DiffItem does the comparison logic (green = higher, red = lower, grey = equal) and renders colored badges.
+App component — wires two FileSelector inputs to state, looks up car data, and renders the diff table grouped by section (Tyres, Electronics, Mechanical, Dampers, Aero).
+The setupGroups config arrays (tyresSetup, electronicsSetup, mechanicalSetup, dampersSetup, aeroSetup) — these are the key data structures defining which parameters are compared and how raw ACC file values are converted to human-readable units (e.g. tyre pressure from internal index → psi, toe from clicks → degrees, etc.). These value-translation functions are critical context for writing accurate explanations.
+
+src/CarData.js — A large lookup table keyed by ACC's internal carName string. For each supported car it provides the per-car constants needed to translate raw values: tirePressureMin, toeMins, casterFunc, brakeBiasMin, steeringRatioMin, wheelRates, rideHeightMinFront, rideHeightMinRear, etc. This is essential — without it you can't correctly decode what the numbers in a setup file actually mean.
+src/index.js — The React entry point. Needed so Claude Code understands how the app is bootstrapped (CRA + React 18 createRoot).
+src/index.css — Minimal global styles. Relevant if you're integrating into an existing app, since you'll want to know what baseline styles exist.
+package.json — Lists the key dependencies: react 18, react-bootstrap 2.x, and bootstrap 5.x. Important for Claude Code to know what UI primitives are available and what it can/can't install.
+
+Supporting Files (Lower Priority, but Useful Context)
+src/CarData.test.js — Unit tests for the car data module. Useful context for understanding the shape and expected values of CarData, and as a model for writing tests for any new parsing/explanation logic you add.
+src/setupTests.js — Boilerplate Jest/Testing Library setup. Only needed if you're adding tests.
+public/ (directory) — Static assets (favicon, index.html, manifest). Only relevant if you're building a standalone page rather than embedding a component.
+README.md — Brief. Worth skimming since it confirms the app runs entirely client-side (no backend), which is important context if you're adding an AI explanation feature (you'll need to decide where the LLM API call lives).
+
+Key Things to Tell Claude Code
+Beyond the files, make sure to give Claude Code these pieces of context explicitly:
+
+ACC setup files are JSON. The structure is { carName, basicSetup: { tyres, alignment, electronics }, advancedSetup: { mechanicalBalance, dampers, aeroBalance, drivetrain } }. Raw values are indices/offsets, not human-readable — CarData.js and the setupGroups functions in App.js contain all the translation logic.
+The "explanation" feature is new. The existing repo only shows what changed (with color coding). Your addition needs to explain why it matters — e.g. "Higher front tyre pressure reduces grip but improves response" — which will require either hardcoded descriptions per parameter or an LLM API call.
+The app is currently a standalone CRA app. If you're embedding this as a component in your existing React app, you'll need to extract the logic out of App.js into a self-contained component and confirm whether react-bootstrap/bootstrap are already in your project.
