@@ -160,12 +160,10 @@ function ValueCell({ value, diff, side }: { value: string | null; diff: 'higher'
 
 function ComparisonCategory({
   category,
-  baseCarName,
   expanded,
   onToggle,
 }: {
   category: SetupCategory
-  baseCarName: string
   expanded: boolean
   onToggle: () => void
 }) {
@@ -492,7 +490,6 @@ export function SetupCompare() {
                 <ComparisonCategory
                   key={cat.name}
                   category={cat}
-                  baseCarName={baseline!.carName}
                   expanded={expandedCategories.has(cat.name)}
                   onToggle={() => toggleCategory(cat.name)}
                 />

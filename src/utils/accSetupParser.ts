@@ -97,8 +97,6 @@ function getRearAvg(arr: number[]): number {
 
 function extractTyres(setup: AccSetupFile, car: CarConfig): SetupParameter[] {
   const tp = setup.basicSetup.tyres.tyrePressure
-  const pressures = tp.map(v => pv(car.tirePressureMin + v / 10, 1))
-
   const toe = setup.basicSetup.alignment.toe
   const toeFront = pv(getFront(toe) / 100 + car.toeMins[0], 2)
   const toeRear = pv(getRear(toe) / 100 + car.toeMins[1], 2)
