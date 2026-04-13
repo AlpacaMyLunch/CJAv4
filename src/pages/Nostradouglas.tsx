@@ -355,9 +355,10 @@ export function Nostradouglas() {
         }
       }
 
+      const startPosition = getStartPosition(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
       const newTracks = arrayMove(selectedTracks, oldIndex, newIndex).map((track, index) => ({
         ...track,
-        position: index + 1
+        position: startPosition + index
       }))
 
       setSelectedTracks(newTracks)
@@ -387,11 +388,12 @@ export function Nostradouglas() {
         })
       }
 
+      const startPosition = getStartPosition(isWeek1DeadlinePassed, hasSavedWeek1Prediction)
       const newTracks = selectedTracks
         .filter(track => track.id !== trackId)
         .map((track, index) => ({
           ...track,
-          position: index + 1
+          position: startPosition + index
         }))
       setSelectedTracks(newTracks)
     }
